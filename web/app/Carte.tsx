@@ -16,6 +16,10 @@ type Props = {
   cadrage: [number, number, number, number];
   /** filtres actifs, recopiés dans les liens « Voir la commune » */
   qs: string;
+  /** budget saisi (page Estimer) : ajoute l'écart au prix de chaque vente dans la fenêtre */
+  budget?: number;
+  /** remplace le titre-constat calculé (page Estimer) */
+  titre?: string;
 };
 
 // Couleurs pour MapLibre (le canvas ne lit pas les variables CSS) : un seul ton, clair → bleu encre ;
@@ -40,6 +44,9 @@ const echappe = (s: unknown) =>
   String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 const ou = (v: unknown, unite = "") => (v == null || v === "" ? "n/d" : `${nombre.format(Number(v))}${unite}`);
 
+const ecart = (d: number) =>
+  d === 0 ? "0 € (au prix de votre budget)" : `${d > 0 ? "+" : "−"}${nombre.format(Math.abs(d))} € (${d > 0 ? "plus cher" : "moins cher"} que votre budget)`;
+
 // Quantiles (20/40/60/80 %) : 4 seuils pour 5 classes.
 function seuils(valeurs: number[]) {
   const v = [...valeurs].sort((a, b) => a - b);
@@ -56,7 +63,7 @@ function abonneTheme(rappel: () => void) {
   return () => obs.disconnect();
 }
 
-export default function Carte({ communes, ventes, cadrage, qs }: Props) {
+export default function Carte({ communes, ventes, cadrage, qs, budget, titre }: Props) {
   const boite = useRef<HTMLDivElement>(null);
   const carte = useRef<CarteMap | null>(null);
   const [mode, setMode] = useState<Mode>(communes ? "deux" : "ventes");
@@ -178,7 +185,8 @@ export default function Carte({ communes, ventes, cadrage, qs }: Props) {
             <p>${echappe(p.type)} · ${ou(p.surface_reelle_bati, " m²")} · ${ou(p.nombre_pieces_principales)} pièces</p>
             <p>${ou(p.prix_m2, " €/m²")} · ${p.date_mutation ? date.format(new Date(p.date_mutation)) : "n/d"}</p>
             <p>${echappe(p.nom_commune)}${p.section ? `, section ${echappe(p.section)}` : ""}</p>
-            <p>${options ? `Avec ${options}` : "Sans jardin ni dépendance"}</p>`);
+            <p>${options ? `Avec ${options}` : "Sans jardin ni dépendance"}</p>${
+              budget ? `<p>Écart avec votre budget : <strong>${ecart(p.valeur_fonciere - budget)}</strong></p>` : ""}`);
         } else {
           ouvrir(e.lngLat, `<strong>${echappe(p.commune)}</strong>
             <p>${ou(p.prix_m2_median, " €/m²")} médian · ${ou(p.n)} ventes${p.n < 5 ? " (trop peu pour conclure)" : ""}</p>
@@ -193,7 +201,7 @@ export default function Carte({ communes, ventes, cadrage, qs }: Props) {
       setPrete(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- couleur/rampe dérivent de theme et cle
-  }, [theme, communes, ventes, cadrage, qs, cle]);
+  }, [theme, communes, ventes, cadrage, qs, cle, budget]);
 
   // La bascule ne fait que masquer des couches : pas de rechargement.
   useEffect(() => {
@@ -229,11 +237,11 @@ export default function Carte({ communes, ventes, cadrage, qs }: Props) {
 
   return (
     <section className="panel carte-panneau" aria-labelledby="titre-carte">
-      <h2 id="titre-carte">{communes && haut && bas
+      <h2 id="titre-carte">{titre ?? (communes && haut && bas
           ? `${haut.commune} la plus chère (${ou(haut.prix_m2_median, " €/m²")}), ${bas.commune} la moins chère (${ou(bas.prix_m2_median, " €/m²")})`
           : medianeVentes != null
             ? `${ou(ventes.features.length)} vente${ventes.features.length > 1 ? "s" : ""} sur la carte, médiane ${ou(medianeVentes, " €/m²")}`
-            : "Aucune vente géolocalisée pour cette recherche"}</h2>
+            : "Aucune vente géolocalisée pour cette recherche")}</h2>
       {communes && (
         <div className="segments" role="group" aria-label="Couches affichées">
           {(

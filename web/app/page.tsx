@@ -1,6 +1,10 @@
 import Link from "next/link";
-import { carte, communes as chargerCommunes, filtres, kpis as chargerKpis, ventes as chargerVentes } from "@/lib/api";
+import {
+  carte, communes as chargerCommunes, evolution as chargerEvolution, evolutionTranches, filtres,
+  kpis as chargerKpis, ventes as chargerVentes,
+} from "@/lib/api";
 import Carte from "./Carte";
+import Evolution from "./Evolution";
 import Filtres from "./Filtres";
 
 const nombre = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 });
@@ -9,12 +13,15 @@ const LOIRET: [number, number, number, number] = [1.51, 47.48, 3.13, 48.35];
 const LIMITE = 3000;
 
 export default async function Page({ searchParams }: PageProps<"/">) {
-  const q = filtres(await searchParams);
-  const [kpis, communes, communesCarte, ventes] = await Promise.all([
+  const sp = await searchParams;
+  const q = filtres(sp);
+  const vue = sp.evo === "tout" ? "tout" : "tranches";
+  const [kpis, communes, communesCarte, ventes, evo] = await Promise.all([
     chargerKpis(q),
     chargerCommunes(q),
     carte(q),
     chargerVentes(q, LIMITE),
+    vue === "tout" ? chargerEvolution(q) : evolutionTranches(q),
   ]);
 
   const max = Math.max(...communes.map((c) => c.prix_m2_median ?? 0), 1);
@@ -33,7 +40,7 @@ export default async function Page({ searchParams }: PageProps<"/">) {
       <p className="source">DGFiP, DVF géolocalisées (Etalab) · Loiret · 2021-2025 · Licence Ouverte 2.0</p>
       <h1>Où chercher un logement autour d&apos;Orléans, et pour quel budget ?</h1>
 
-      <Filtres q={q} action="/" />
+      <Filtres q={q} action="/" evo={vue === "tout" ? vue : undefined} />
 
       <section className="kpis" aria-label="Indicateurs">
         <div className="panel surligne">
@@ -58,6 +65,8 @@ export default async function Page({ searchParams }: PageProps<"/">) {
           recherche (les plus récentes). Affinez les filtres pour tout voir.
         </p>
       )}
+
+      <Evolution q={q} vue={vue} lignes={evo} />
 
       <section className="panel graphique" aria-labelledby="titre-graphique">
         <h2 id="titre-graphique">{titre}</h2>
