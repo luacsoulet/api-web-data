@@ -15,6 +15,7 @@ Cette documentation décrit l'application telle qu'elle est dans le dépôt, les
 | [base-enrichie.md](base-enrichie.md) | La base enrichie de l'équipe données (84 colonnes par vente, 65 par commune) et l'inventaire des sources | Data |
 | [dictionnaire-colonnes.md](dictionnaire-colonnes.md) | Dictionnaire complet des 149 colonnes, avec source et taux de remplissage | Data |
 | [personnalisation-datagouv.md](personnalisation-datagouv.md) | Catalogue de jeux data.gouv.fr pour adapter le résultat à la situation du couple, par profil | Produit et data |
+| [extension-chrome.md](extension-chrome.md) | Piste d'évolution : analyser une annonce Leboncoin avec une extension Chrome (non implémentée) | Produit |
 | [developpement.md](developpement.md) | Installation, tests, qualité, workflow Git, tâches courantes | Contributeurs |
 | [deploiement.md](deploiement.md) | Docker, Dokploy, variables d'environnement, exploitation | Contributeurs |
 
