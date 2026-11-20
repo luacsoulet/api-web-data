@@ -18,7 +18,7 @@ Depuis la version intermédiaire : filtres budget, période, surface, jardin, ga
 
 ## Documentation
 
-La documentation détaillée est dans [`docs/`](docs/README.md) : [architecture](docs/architecture.md), [référence de l'API](docs/api.md), [front-end](docs/frontend.md), [données embarquées et modèle](docs/donnees.md), [base enrichie](docs/base-enrichie.md) et [dictionnaire des colonnes](docs/dictionnaire-colonnes.md), [personnalisation avec les données data.gouv.fr](docs/personnalisation-datagouv.md), [guide de développement](docs/developpement.md) et [déploiement](docs/deploiement.md).
+La documentation détaillée est dans [`docs/`](docs/README.md) : [architecture](docs/architecture.md), [référence de l'API](docs/api.md), [front-end](docs/frontend.md), [données embarquées et modèle](docs/donnees.md), [base enrichie](docs/base-enrichie.md) et [dictionnaire des colonnes](docs/dictionnaire-colonnes.md), [personnalisation avec les données data.gouv.fr](docs/personnalisation-datagouv.md), [piste d'extension Chrome pour les annonces](docs/extension-chrome.md), [guide de développement](docs/developpement.md) et [déploiement](docs/deploiement.md).
 
 ## Lancer en local
 
