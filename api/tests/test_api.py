@@ -158,6 +158,12 @@ def test_estimation_risques_et_marge():
     assert impacts["alea_argile"] <= 0 and impacts["zone_inondable_scenario"] <= 0
     assert min(impacts.values()) < 0
     assert e["marge_negociation"]["haute_eur"] > 0
+    # aléas sans décote mesurée : au moins leur forfait indicatif (crue fréquente 8 %, argile fort 4 %)
+    args = {a["facteur"]: a for a in e["marge_negociation"]["arguments"]}
+    assert (
+        args["zone_inondable_scenario"]["pct"] >= 0.08
+        and args["alea_argile"]["pct"] >= 0.04
+    )
     assert {a["facteur"] for a in e["a_verifier"]} >= {"alea_argile", "dpe_classe"}
     sain = {**p, "alea_argile": "faible", "zone_inondable": "aucune", "dpe": "D"}
     assert (
