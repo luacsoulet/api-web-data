@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
+import Link from "next/link";
 import "./globals.css";
 import ThemeToggle from "./ThemeToggle";
 
@@ -29,7 +30,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: themeInitial }} />
       </head>
       <body>
-        <ThemeToggle />
+        <header className="entete">
+          <nav aria-label="Principale">
+            <Link href="/">Carte</Link>
+            <Link href="/estimer">Estimer un prix</Link>
+          </nav>
+          <ThemeToggle />
+        </header>
         {children}
       </body>
     </html>
