@@ -55,21 +55,22 @@ Paramètre commun `type` : `Maison` | `Appartement` | `Tous` (défaut `Maison`).
 `prix_m2_median` et `valeur_median` sont `float | null` : un NaN pandas devient `null`. Le front affiche « n/d ».
 `type` invalide → 422. `min_ventes` borné 1-1000, `limit` borné 1-325.
 
-## Déployer sur un VPS (Docker)
+## Déployer sur un VPS avec Dokploy
 
-Prérequis : Docker et le plugin compose sur le VPS.
+1. Create Service → **Compose** (pas « Application » : il y a deux Dockerfile, `api/` et `web/`).
+2. Provider GitHub : `luacsoulet/api-web-data`, branche `main`, Compose Path `./docker-compose.yml`.
+3. Onglet Domains : service `web`, port `3000`, votre domaine, HTTPS (Let's Encrypt). Puis Deploy.
+
+Aucun port n'est publié : le port 3000 de l'hôte est celui du tableau de bord Dokploy, Traefik route le domaine vers le conteneur `web`. L'API reste interne (`API_URL=http://api:8000`). Pas de mise en veille : rien à réveiller avant la démo.
+
+## Lancer avec Docker, sans Dokploy
 
 ```bash
-git clone https://github.com/luacsoulet/api-web-data.git immo && cd immo
-docker compose up -d --build          # front sur le port 3000 (WEB_PORT=8080 pour en changer)
-docker compose ps                     # api « healthy », web « Up »
+docker compose -f docker-compose.yml -f docker-compose.ports.yml up -d --build   # http://127.0.0.1:3000
+docker compose ps                                                                 # api « healthy », web « Up »
 ```
 
-Mettre à jour après un push sur `main` : `git pull && docker compose up -d --build`.
-
-- L'API n'est pas exposée : seul le front l'appelle, par le réseau interne de compose (`API_URL=http://api:8000`).
-- HTTPS : mettre un reverse proxy devant le port 3000, par exemple Caddy (`immo.mondomaine.fr { reverse_proxy 127.0.0.1:3000 }`), qui gère le certificat seul. Lancer alors `WEB_BIND=127.0.0.1 docker compose up -d --build` : Docker contourne ufw, sans ça le port 3000 reste ouvert sur Internet.
-- Pas de mise en veille comme sur les offres gratuites : rien à réveiller avant la démo.
+`WEB_PORT=8080` change le port. Le port écoute sur `127.0.0.1` : mettre un reverse proxy (Caddy, Nginx) devant pour l'ouvrir au public. `WEB_BIND=0.0.0.0` l'ouvre directement, en contournant ufw.
 
 ## Déployer (Render + Vercel)
 
