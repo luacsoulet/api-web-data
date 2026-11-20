@@ -95,3 +95,29 @@ def evolution(
         }
         for r in g.itertuples()
     ]
+
+
+def points(
+    type_: str,
+    annee: int | None = None,
+    budget_max: int | None = None,
+    limit: int = 500,
+) -> list[dict]:
+    """Ventes geolocalisees pour les marqueurs de la carte (type maps)."""
+    df = filtrer(type_, annee, budget_max)
+    df = df.dropna(subset=["latitude", "longitude"]).head(limit)
+    return [
+        {
+            "id_mutation": str(r.id_mutation),
+            "nom_commune": r.nom_commune,
+            "type": r.type,
+            "prix": _nombre(r.valeur_fonciere),
+            "surface": _nombre(r.surface_reelle_bati),
+            "prix_m2": _nombre(r.prix_m2),
+            "nombre_pieces": _nombre(r.nombre_pieces_principales),
+            "date": str(r.date_mutation.date()) if pd.notna(r.date_mutation) else None,
+            "latitude": float(r.latitude),
+            "longitude": float(r.longitude),
+        }
+        for r in df.itertuples()
+    ]

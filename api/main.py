@@ -44,3 +44,11 @@ def communes(
 @app.get("/evolution")
 def evolution(f: Filtres):
     return calculs.evolution(f["type"], f["annee"], f["budget_max"])
+
+
+@app.get("/points")
+def points(
+    f: Filtres,
+    limit: Annotated[int, Query(ge=1, le=2000)] = 500,
+):
+    return calculs.points(f["type"], f["annee"], f["budget_max"], limit)

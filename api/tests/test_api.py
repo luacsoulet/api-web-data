@@ -56,3 +56,17 @@ def test_evolution_triee():
 
 def test_type_invalide():
     assert client.get("/kpis", params={"type": "Chateau"}).status_code == 422
+
+
+def test_points_geo():
+    r = client.get("/points", params={"type": "Maison", "limit": 10})
+    assert r.status_code == 200
+    pts = r.json()
+    assert len(pts) > 0
+    assert all("latitude" in p and "longitude" in p for p in pts)
+    assert all(isinstance(p["latitude"], float) and isinstance(p["longitude"], float) for p in pts)
+
+
+def test_points_annee_filtre():
+    r = client.get("/points", params={"type": "Maison", "annee": 2024, "limit": 5})
+    assert r.status_code == 200
