@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import type { Point } from "@/lib/api";
 import {
@@ -9,7 +9,7 @@ import {
   type Kpis,
   type Commune,
 } from "@/lib/api";
-import { Carte } from "./carte";
+import { Carte } from "./Carte";
 import { IconeTypeBien } from "./icone";
 import dynamic from "next/dynamic";
 import { useState, useEffect } from "react";
@@ -72,11 +72,11 @@ export default function Page() {
     return (
       <main className="chargement">
         <p className="source">
-          DGFiP, DVF géolocalisées (Etalab) · Loiret · 2021-2025 · Licence Ouverte 2.0
+          DGFiP, DVF gÃ©olocalisÃ©es (Etalab) Â· Loiret Â· 2021-2025 Â· Licence Ouverte 2.0
         </p>
-        <h1>Où acheter autour d&apos;Orléans, et pour quel budget ?</h1>
+        <h1>OÃ¹ acheter autour d&apos;OrlÃ©ans, et pour quel budget ?</h1>
         <p style={{ textAlign: "center", padding: "4rem 0", color: "#666" }}>
-          Chargement des données…
+          Chargement des donnÃ©esâ€¦
         </p>
       </main>
     );
@@ -87,19 +87,19 @@ export default function Page() {
   const top = communes[0];
   const dernier = communes[communes.length - 1];
   const titre = top
-    ? `${top.nom_commune}, la plus chère : ${fmt(top.prix_m2_median, "€/m²")} médian sur ${nombre.format(top.n)} ventes`
+    ? `${top.nom_commune}, la plus chÃ¨re : ${fmt(top.prix_m2_median, "â‚¬/mÂ²")} mÃ©dian sur ${nombre.format(top.n)} ventes`
     : "Aucune commune avec assez de ventes";
   const alternative =
     top && dernier
-      ? `Classement de ${communes.length} communes par prix médian au m² décroissant, de ${top.nom_commune} (${fmt(top.prix_m2_median, "€/m²")}) à ${dernier.nom_commune} (${fmt(dernier.prix_m2_median, "€/m²")}).`
+      ? `Classement de ${communes.length} communes par prix mÃ©dian au mÂ² dÃ©croissant, de ${top.nom_commune} (${fmt(top.prix_m2_median, "â‚¬/mÂ²")}) Ã  ${dernier.nom_commune} (${fmt(dernier.prix_m2_median, "â‚¬/mÂ²")}).`
       : "";
 
   return (
     <main>
       <p className="source">
-        DGFiP, DVF géolocalisées (Etalab) · Loiret · 2021-2025 · Licence Ouverte 2.0
+        DGFiP, DVF gÃ©olocalisÃ©es (Etalab) Â· Loiret Â· 2021-2025 Â· Licence Ouverte 2.0
       </p>
-      <h1>Où acheter autour d&apos;Orléans, et pour quel budget ?</h1>
+      <h1>OÃ¹ acheter autour d&apos;OrlÃ©ans, et pour quel budget ?</h1>
 
       <form method="get" className="filtres" aria-label="Filtres">
         <label>
@@ -113,7 +113,7 @@ export default function Page() {
           </select>
         </label>
         <label>
-          Année
+          AnnÃ©e
           <select name="annee" defaultValue={searchParams.get("annee") ?? ""}>
             <option value="">Toutes</option>
             {[2021, 2022, 2023, 2024, 2025].map((y) => (
@@ -122,7 +122,7 @@ export default function Page() {
           </select>
         </label>
         <label>
-          Budget max (€)
+          Budget max (â‚¬)
           <input
             type="number"
             name="budget_max"
@@ -137,12 +137,12 @@ export default function Page() {
 
       <section className="kpis" aria-label="Indicateurs">
         <div className="panel surligne">
-          <p className="label">Prix médian au m²</p>
-          <p className="valeur">{fmt(kpis.prix_m2_median, "€/m²")}</p>
+          <p className="label">Prix mÃ©dian au mÂ²</p>
+          <p className="valeur">{fmt(kpis.prix_m2_median, "â‚¬/mÂ²")}</p>
         </div>
         <div className="panel">
-          <p className="label">Prix médian de vente</p>
-          <p className="valeur">{fmt(kpis.valeur_median, "€")}</p>
+          <p className="label">Prix mÃ©dian de vente</p>
+          <p className="valeur">{fmt(kpis.valeur_median, "â‚¬")}</p>
         </div>
         <div className="panel">
           <p className="label">Nombre de ventes</p>
@@ -181,7 +181,7 @@ export default function Page() {
                 />
               </span>
               <span className="chiffre">
-                {fmt(c.prix_m2_median, "€/m²")}
+                {fmt(c.prix_m2_median, "â‚¬/mÂ²")}
                 <small>{nombre.format(c.n)} ventes</small>
               </span>
             </li>
