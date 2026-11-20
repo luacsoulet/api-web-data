@@ -152,6 +152,21 @@ def contexte(longitude: Longitude, latitude: Latitude):
     return calculs.contexte(longitude, latitude)
 
 
+@app.get("/adresses")
+def adresses(q: Annotated[str, Query(min_length=3, max_length=100)]):
+    return calculs.adresses(q)
+
+
+@app.get("/autour")
+def autour(
+    f: Filtres,
+    longitude: Longitude,
+    latitude: Latitude,
+    rayon_m: Annotated[int, Query(ge=100, le=5000)] = 500,
+):
+    return calculs.autour(f, longitude, latitude, rayon_m)
+
+
 # facteur -> colonnes ramenées à la valeur « sans défaut » pour mesurer son impact
 REFERENCES = {
     "alea_argile": {"alea_argile": "faible"},

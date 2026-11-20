@@ -5,7 +5,11 @@ const nombre = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 });
 const annee = (a: string) => (a === "2026" ? "2026 (1er semestre)" : a);
 
 /** Formulaire GET : l'URL porte l'état, fonctionne sans JavaScript. `q` = filtres déjà validés. */
-export default function Filtres({ q, action, section, evo }: { q: URLSearchParams; action: string; section?: string; evo?: string }) {
+export default function Filtres({ q, action, section, evo, garder }: {
+  q: URLSearchParams; action: string; section?: string; evo?: string;
+  /** paramètres d'URL à conserver tels quels (page Autour : point, rayon, adresse) */
+  garder?: Record<string, string>;
+}) {
   const amin = q.get("annee_min") ?? "2021";
   const amax = q.get("annee_max") ?? "2026";
   const dpe = q.getAll("dpe");
@@ -52,6 +56,7 @@ export default function Filtres({ q, action, section, evo }: { q: URLSearchParam
       {/* garde la section du drill-down quand on change un filtre */}
       {section && <input type="hidden" name="section" value={section} />}
       {evo && <input type="hidden" name="evo" value={evo} />}
+      {Object.entries(garder ?? {}).map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
       <label>
         <span className="label">Type</span>
         <select name="type" defaultValue={q.get("type")!}>
@@ -172,7 +177,7 @@ export default function Filtres({ q, action, section, evo }: { q: URLSearchParam
       <div className="options">
         <div className="actions">
           <button className="bouton" type="submit">Appliquer</button>
-          <Link className="lien-bouton" href={action}>Réinitialiser</Link>
+          <Link className="lien-bouton" href={garder ? `${action}?${new URLSearchParams(garder)}` : action}>Réinitialiser</Link>
         </div>
       </div>
       <p className="detail actifs" aria-live="polite">Recherche : {actifs.join(" · ")}</p>

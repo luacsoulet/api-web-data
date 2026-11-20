@@ -52,6 +52,8 @@ type V3Props = {
   alea_argile?: string | null;
   zone_inondable_scenario?: string | null;
   bat_annee_construction?: number | null;
+  /** page Autour : distance au point cherché */
+  distance_m?: number;
 };
 export type VenteCommune = {
   id_mutation: string;
@@ -196,3 +198,24 @@ export async function bien(id: string) {
 
 export const contexte = (longitude: number, latitude: number) =>
   get<Contexte>(`/contexte?longitude=${longitude}&latitude=${latitude}`);
+
+/** familles d'équipements (BPE) : libellé et couleur de carte (le canvas MapLibre ne lit pas les variables CSS) */
+export const EQUIPEMENTS = {
+  ecole: { libelle: "Écoles", couleur: "#2e7d32" },
+  college_lycee: { libelle: "Collèges et lycées", couleur: "#00838f" },
+  medecin: { libelle: "Médecins généralistes", couleur: "#c62828" },
+  pharmacie: { libelle: "Pharmacies", couleur: "#ad1457" },
+  commerce_alimentaire: { libelle: "Commerces alimentaires", couleur: "#ef6c00" },
+  gare: { libelle: "Gares", couleur: "#6d4c41" },
+} as const;
+export type Adresse = { libelle: string; code_insee: string; longitude: number; latitude: number };
+type Medianes = { n: number; prix_m2_median: number | null; valeur_median: number | null };
+/** GET /autour : ventes du rayon (distance_m en plus), médianes, risques au point, équipements */
+export type Autour = {
+  ventes: Collection<VentePoint> & { total: number };
+  stats: Medianes & { par_type: Record<string, Medianes> };
+  point: Contexte & { distance_m: number | null };
+  equipements: { famille: keyof typeof EQUIPEMENTS; n: number; plus_proche: { nom: string | null; distance_m: number } | null }[];
+};
+export const autour = (q: URLSearchParams, lon: number, lat: number, rayon: number) =>
+  get<Autour>(`/autour?${q}&longitude=${lon}&latitude=${lat}&rayon_m=${rayon}`);

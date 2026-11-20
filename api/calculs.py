@@ -9,6 +9,8 @@ import pandas as pd
 DATA = Path(__file__).parent / "data" / "biens.parquet"
 PISCINES = Path(__file__).parent / "data" / "piscines.parquet"
 COMMUNES = Path(__file__).parent / "data" / "communes.geojson"
+ADRESSES = Path(__file__).parent / "data" / "adresses.parquet"
+EQUIPEMENTS = Path(__file__).parent / "data" / "equipements.geojson"
 
 
 @lru_cache
@@ -210,7 +212,7 @@ PROPS_VENTE = [
 ]  # fmt: skip
 
 
-def _points(df: pd.DataFrame) -> list[dict]:
+def _points(df: pd.DataFrame, props: list[str] = PROPS_VENTE) -> list[dict]:
     coords = df[["longitude", "latitude"]].to_numpy().tolist()
     return [
         {
@@ -218,7 +220,7 @@ def _points(df: pd.DataFrame) -> list[dict]:
             "geometry": {"type": "Point", "coordinates": c},
             "properties": p,
         }
-        for c, p in zip(coords, _records(df[PROPS_VENTE]))
+        for c, p in zip(coords, _records(df[props]))
     ]
 
 
@@ -391,6 +393,12 @@ def bien(id_mutation: str) -> dict | None:
     }
 
 
+def _distance(lon: pd.Series, lat: pd.Series, longitude: float, latitude: float) -> pd.Series:  # fmt: skip
+    """Distance en mètres ; approximation plane (équirectangulaire), suffisante à l'échelle du Loiret."""
+    dx = (lon - longitude) * 111_320 * np.cos(np.radians(latitude))
+    return np.hypot(dx, (lat - latitude) * 110_540)
+
+
 COLS_CONTEXTE = [
     "code_commune", "nom_commune", "alea_argile", "zone_inondable_scenario",
     "hauteur_inondation_classe", "sensibilite_nappe", "bruit_lden_max_db", "bruit_source",
@@ -406,9 +414,7 @@ VOISINAGE_M = 150
 def contexte(longitude: float, latitude: float) -> dict:
     """Valeurs de la vente la plus proche à < 150 m (sinon null) ; commune de la vente la plus proche à < 5 km."""
     df = charger().dropna(subset=["longitude", "latitude"])
-    # approximation plane, suffisante à l'échelle du Loiret
-    dx = (df["longitude"] - longitude) * 111_320 * np.cos(np.radians(latitude))
-    d = np.hypot(dx, (df["latitude"] - latitude) * 110_540)
+    d = _distance(df["longitude"], df["latitude"], longitude, latitude)
     i = d.idxmin()
     vide = dict.fromkeys(COLS_CONTEXTE)
     # shortcut: commune = celle de la vente la plus proche, pas un test point-dans-polygone ; peut se tromper en limite de commune
@@ -436,3 +442,88 @@ def valeurs_commune(code: str) -> dict:
             mode = s.value_counts(dropna=False).index[0]
             out[c] = None if not isinstance(mode, str) and pd.isna(mode) else mode
     return out
+
+
+def normaliser(s: pd.Series) -> pd.Series:
+    """Minuscules, sans accents, ponctuation -> espace : même règle pour l'index d'adresses et la requête."""
+    s = s.str.normalize("NFKD").str.encode("ascii", "ignore").str.decode("ascii")
+    return s.str.lower().str.replace(r"[^a-z0-9]+", " ", regex=True).str.strip()
+
+
+@lru_cache
+def index_adresses() -> pd.DataFrame:
+    return pd.read_parquet(ADRESSES)
+
+
+def adresses(q: str, limit: int = 8) -> list[dict]:
+    mots = normaliser(pd.Series([q]))[0].split()
+    if not mots:
+        return []
+    df = index_adresses()
+    s = df["recherche"]
+    # mots complets, sauf le dernier encore en cours de frappe (début de mot)
+    m = s.str.contains(f" {mots[-1]}", regex=False)
+    for mot in mots[:-1]:
+        m &= s.str.contains(f" {mot} ", regex=False)
+    return [
+        {
+            "libelle": r.libelle,
+            "code_insee": r.code_insee,
+            "longitude": round(float(r.lon), 6),
+            "latitude": round(float(r.lat), 6),
+        }
+        for r in df[m].head(limit).itertuples()
+    ]
+
+
+FAMILLES = ["ecole", "college_lycee", "medecin", "pharmacie", "commerce_alimentaire", "gare"]  # fmt: skip
+
+
+@lru_cache
+def equipements() -> pd.DataFrame:
+    fc = json.loads(EQUIPEMENTS.read_text(encoding="utf-8"))
+    return pd.DataFrame(
+        {
+            "famille": f["properties"]["famille"],
+            "nom": f["properties"].get("nom"),
+            "lon": f["geometry"]["coordinates"][0],
+            "lat": f["geometry"]["coordinates"][1],
+        }
+        for f in fc["features"]
+    )
+
+
+def _equipements(longitude: float, latitude: float, rayon_m: int) -> list[dict]:
+    """Par famille : nombre dans le rayon, et le plus proche (même hors du rayon)."""
+    eq = equipements()
+    eq = eq.assign(d=_distance(eq["lon"], eq["lat"], longitude, latitude))
+    out = []
+    for fam in FAMILLES:
+        g = eq[eq["famille"] == fam]
+        p = g.loc[g["d"].idxmin()] if len(g) else None
+        proche = None if p is None else {"nom": p["nom"], "distance_m": round(float(p["d"]))}  # fmt: skip
+        out.append({"famille": fam, "n": int((g["d"] <= rayon_m).sum()), "plus_proche": proche})  # fmt: skip
+    return out
+
+
+MAX_AUTOUR = 2000
+
+
+def autour(f: dict, longitude: float, latitude: float, rayon_m: int) -> dict:
+    df = filtrer(f).dropna(subset=["longitude", "latitude"])
+    d = _distance(df["longitude"], df["latitude"], longitude, latitude)
+    df = df.assign(distance_m=d.round()).loc[d <= rayon_m]
+    recentes = df.sort_values("date_mutation", ascending=False).head(MAX_AUTOUR)
+    return {
+        "ventes": {
+            "type": "FeatureCollection",
+            "total": len(df),
+            "features": _points(recentes, PROPS_VENTE + ["distance_m"]),
+        },
+        "stats": {
+            **_medianes(df),
+            "par_type": {t: _medianes(g) for t, g in df.groupby("type")},
+        },
+        "point": contexte(longitude, latitude),
+        "equipements": _equipements(longitude, latitude, rayon_m),
+    }

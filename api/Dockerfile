@@ -9,7 +9,7 @@ COPY pyproject.toml uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev --no-install-project
 
 COPY calculs.py main.py modele.py ./
-COPY data/biens.parquet data/piscines.parquet data/communes.geojson data/
+COPY data/biens.parquet data/piscines.parquet data/communes.geojson data/adresses.parquet data/equipements.geojson data/
 # Modèle entraîné au build, jamais à chaque requête
 RUN /app/.venv/bin/python modele.py
 

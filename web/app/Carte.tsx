@@ -3,7 +3,7 @@
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { Map as CarteMap, MapGeoJSONFeature } from "maplibre-gl";
-import type { Collection, CommuneCarte, VentePoint } from "@/lib/api";
+import { EQUIPEMENTS, type Collection, type CommuneCarte, type VentePoint } from "@/lib/api";
 
 // Turbopack ne résout pas seul le worker de MapLibre 6 : on lui donne son adresse (doc MapLibre, section Next.js)
 const WORKER = new URL("maplibre-gl/dist/maplibre-gl-worker.mjs", import.meta.url).toString();
@@ -20,7 +20,18 @@ type Props = {
   budget?: number;
   /** remplace le titre-constat calculé (page Estimer) */
   titre?: string;
+  /** page Autour : cercle du rayon et équipements qu'il contient */
+  autour?: { centre: [number, number]; rayon: number };
 };
+
+/** Cercle en polygone GeoJSON (64 côtés), même approximation plane que l'API. */
+function cercle([lon, lat]: [number, number], rayon: number) {
+  const ring = Array.from({ length: 65 }, (_, i) => {
+    const a = (i / 64) * 2 * Math.PI;
+    return [lon + (rayon * Math.cos(a)) / (111_320 * Math.cos((lat * Math.PI) / 180)), lat + (rayon * Math.sin(a)) / 110_540];
+  });
+  return { type: "Feature" as const, properties: {}, geometry: { type: "Polygon" as const, coordinates: [ring] } };
+}
 
 // Couleurs pour MapLibre (le canvas ne lit pas les variables CSS) : un seul ton, clair → bleu encre ;
 // en sombre la rampe s'inverse pour que les prix élevés ressortent sur le fond nuit.
@@ -86,7 +97,7 @@ function abonneTheme(rappel: () => void) {
   return () => obs.disconnect();
 }
 
-export default function Carte({ communes, ventes, cadrage, qs, budget, titre }: Props) {
+export default function Carte({ communes, ventes, cadrage, qs, budget, titre, autour }: Props) {
   const boite = useRef<HTMLDivElement>(null);
   const carte = useRef<CarteMap | null>(null);
   const [mode, setMode] = useState<Mode>(communes ? "deux" : "ventes");
@@ -111,7 +122,7 @@ export default function Carte({ communes, ventes, cadrage, qs, budget, titre }: 
   useEffect(() => {
     let annule = false;
     const reduit = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    import("maplibre-gl").then(({ Map, NavigationControl, Popup, setWorkerUrl }) => {
+    import("maplibre-gl").then(({ Map, Marker, NavigationControl, Popup, setWorkerUrl }) => {
       if (annule || !boite.current) return;
       setWorkerUrl(WORKER);
       const fond = FOND[theme];
@@ -156,6 +167,24 @@ export default function Carte({ communes, ventes, cadrage, qs, budget, titre }: 
           paint: { "fill-color": fond.trait, "fill-opacity": 0.15 } });
         map.addLayer({ id: "cadastre-parcelles", type: "line", source: "cadastre", "source-layer": "parcelles", minzoom: 15,
           paint: { "line-color": fond.trait, "line-width": 0.6, "line-opacity": 0.7 } });
+
+        if (autour) {
+          const zone = cercle(autour.centre, autour.rayon);
+          map.addSource("cercle", { type: "geojson", data: zone });
+          map.addLayer({ id: "cercle-fond", type: "fill", source: "cercle", paint: { "fill-color": fond.trait, "fill-opacity": 0.06 } });
+          map.addLayer({ id: "cercle-trait", type: "line", source: "cercle",
+            paint: { "line-color": fond.trait, "line-width": 2, "line-dasharray": [3, 2] } });
+          // équipements du rayon seulement : filtre « within » sur le cercle, côté carte
+          map.addSource("autour-equipements", { type: "geojson", data: "/couches/equipements.geojson" });
+          map.addLayer({ id: "autour-equipements", type: "circle", source: "autour-equipements", filter: ["within", zone] as never,
+            paint: {
+              "circle-color": ["match", ["get", "famille"], ...Object.entries(EQUIPEMENTS).flatMap(([f, e]) => [f, e.couleur]), "#888888"] as never,
+              "circle-radius": 5,
+              "circle-stroke-color": fond.papier,
+              "circle-stroke-width": 1.5,
+            } });
+          new Marker({ color: fond.trait }).setLngLat(autour.centre).addTo(map);
+        }
 
         map.addSource("ventes", { type: "geojson", data: ventes as never, cluster: true, clusterMaxZoom: 13, clusterRadius: 40 });
         map.addLayer({ id: "ventes-groupes", type: "circle", source: "ventes", filter: ["has", "point_count"],
@@ -220,7 +249,7 @@ export default function Carte({ communes, ventes, cadrage, qs, budget, titre }: 
           ].filter(Boolean).join(" · ");
           ouvrir(centre, `<strong>${ou(p.valeur_fonciere, " €")}</strong>
             <p>${echappe(p.type)} · ${ou(p.surface_reelle_bati, " m²")} · ${ou(p.nombre_pieces_principales)} pièces</p>
-            <p>${ou(p.prix_m2, " €/m²")} · ${p.date_mutation ? date.format(new Date(p.date_mutation)) : "n/d"}</p>
+            <p>${ou(p.prix_m2, " €/m²")} · ${p.date_mutation ? date.format(new Date(p.date_mutation)) : "n/d"}${p.distance_m != null ? ` · à ${ou(p.distance_m, " m")}` : ""}</p>
             <p>${echappe(p.nom_commune)}${p.section ? `, section ${echappe(p.section)}` : ""}</p>
             <p>${options ? `Avec ${options}` : "Sans jardin, dépendance ni piscine"}</p>
             <p>DPE ${p.dpe_classe ? echappe(p.dpe_classe) : "n/d"}${p.bat_annee_construction ? ` · construit en ${echappe(p.bat_annee_construction)}` : ""}</p>${
@@ -241,7 +270,7 @@ export default function Carte({ communes, ventes, cadrage, qs, budget, titre }: 
       setPrete(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- couleur/rampe dérivent de theme et cle
-  }, [theme, communes, ventes, cadrage, qs, cle, budget]);
+  }, [theme, communes, ventes, cadrage, qs, cle, budget, autour]);
 
   // La bascule ne fait que masquer des couches : pas de rechargement.
   useEffect(() => {
@@ -298,7 +327,9 @@ export default function Carte({ communes, ventes, cadrage, qs, budget, titre }: 
     ? haut && bas
       ? `Parmi ${tri.length} communes avec au moins ${solides.length >= 2 ? 20 : 5} ventes, ${haut.commune} est la plus chère (${ou(haut.prix_m2_median, " €/m²")} sur ${ou(haut.n)} ventes) et ${bas.commune} la moins chère (${ou(bas.prix_m2_median, " €/m²")} sur ${ou(bas.n)} ventes). ${ou(ventes.features.length)} ventes sont placées en points.`
       : "Aucune commune n'a au moins 5 ventes pour cette recherche."
-    : `${ou(ventes.features.length)} ventes géolocalisées de la commune, colorées selon leur prix au m².`;
+    : autour
+      ? `Cercle de ${ou(autour.rayon)} m autour de l'adresse cherchée (repère au centre) : ${ou(ventes.features.length)} ventes colorées selon leur prix au m², et les équipements du rayon en points colorés par famille (détail dans « À proximité »).`
+      : `${ou(ventes.features.length)} ventes géolocalisées de la commune, colorées selon leur prix au m².`;
 
   const etiquettes = [
     `moins de ${ou(bornes[0])}`,
@@ -385,6 +416,17 @@ export default function Carte({ communes, ventes, cadrage, qs, budget, titre }: 
         </li>
         <li>dès le zoom 15 : plan cadastral (traits = parcelles, aplats = bâtiments)</li>
       </ul>
+      {autour && (
+        <ul className="legende" aria-label="Légende, équipements dans le rayon">
+          <li><strong>Équipements dans le rayon :</strong></li>
+          {Object.entries(EQUIPEMENTS).map(([f, e]) => (
+            <li key={f}>
+              <span className="pastille point" style={{ background: e.couleur }} aria-hidden="true" />
+              {e.libelle}
+            </li>
+          ))}
+        </ul>
+      )}
       {(Object.keys(THEMES) as Theme[]).filter((c) => couches[c]).map((c) => (
         <ul key={c} className="legende" aria-label={`Légende, ${THEMES[c].libelle}`}>
           <li><strong>{THEMES[c].libelle} :</strong></li>

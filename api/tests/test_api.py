@@ -169,3 +169,31 @@ def test_contexte_orleans():
     c = client.get("/contexte", params={"longitude": 1.909, "latitude": 47.902}).json()
     assert c["code_commune"] == "45234" and c["distance_m"] is not None
     assert client.get("/contexte", params={"longitude": 1.9}).status_code == 422
+
+
+def test_adresses_tous_les_mots_numero_compris():
+    r = client.get("/adresses", params={"q": "1 rue de bourgogne orleans"}).json()
+    assert 0 < len(r) <= 8
+    assert {"libelle", "code_insee", "longitude", "latitude"} <= r[0].keys()
+    assert all(a["code_insee"] == "45234" for a in r)
+    assert all(a["libelle"].startswith("1") for a in r)
+    assert client.get("/adresses", params={"q": "ru"}).status_code == 422
+
+
+def test_autour_rayon():
+    p = {"longitude": 1.909, "latitude": 47.902, "type": "Tous"}
+    petit = client.get("/autour", params={**p, "rayon_m": 200}).json()
+    grand = client.get("/autour", params={**p, "rayon_m": 2000}).json()
+    assert 0 < petit["ventes"]["total"] < grand["ventes"]["total"]
+    assert len(grand["ventes"]["features"]) <= 2000
+    assert all(
+        f["properties"]["distance_m"] <= 200 for f in petit["ventes"]["features"]
+    )
+    assert grand["stats"]["n"] == grand["ventes"]["total"]
+    assert "Maison" in grand["stats"]["par_type"]
+    assert grand["point"]["code_commune"] == "45234"
+    eq = {e["famille"]: e for e in grand["equipements"]}
+    assert len(eq) == 6 and eq["ecole"]["n"] > 0
+    assert eq["gare"]["plus_proche"]["distance_m"] >= 0
+    assert client.get("/autour", params={**p, "rayon_m": 50}).status_code == 422
+    assert client.get("/autour", params={**p, "rayon_m": 5001}).status_code == 422
