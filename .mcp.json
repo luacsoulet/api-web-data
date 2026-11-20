@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "immo-loiret": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "--no-project", "--with", "mcp[cli]<2", "--with", "pandas", "--with", "pyarrow", "--with", "numpy>=2", "python", "-I", "mcp/serveur.py"],
+      "env": { "IMMO_API_URL": "http://127.0.0.1:8000" }
+    }
+  }
+}

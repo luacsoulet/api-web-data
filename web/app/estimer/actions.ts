@@ -13,7 +13,7 @@ export type Estimation = {
   comparables: { n: number; prix_median: number | null };
   comparables_ventes: Collection<VentePoint>;
   verdict: "au-dessus" | "dans la fourchette" | "au-dessous" | null;
-  facteurs?: { facteur: string; valeur: string | number | null; impact_eur: number; impact_pct: number }[];
+  facteurs?: { facteur: string; valeur: string | number | boolean | null; impact_eur: number; impact_pct: number }[];
   marge_negociation?: { basse_eur: number; haute_eur: number; pct: number; explication: string };
   a_verifier?: { facteur: string; niveau: "info" | "vigilance" | "alerte"; texte: string }[];
 };

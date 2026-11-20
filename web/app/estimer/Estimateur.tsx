@@ -85,6 +85,15 @@ function Commune({ communes, initiale }: { communes: CommuneOption[]; initiale: 
 }
 
 const NAPPES = { aucune: "Aucune", inondation_cave: "Inondation de cave", debordement_nappe: "Débordement de nappe" } as const;
+const FACTEURS: Record<string, string> = {
+  dpe_classe: "DPE", alea_argile: "Argile (aléa)", zone_inondable_scenario: "Zone inondable",
+  sensibilite_nappe: "Remontée de nappe", bruit_lden_max_db: "Bruit", perimetre_mh_500m: "Monument historique à 500 m",
+  piscine: "Piscine",
+};
+const VALEURS: Record<string, string> = {
+  debordement_nappe: "débordement", inondation_cave: "caves inondables", aucune: "aucune",
+  frequent: "crue fréquente", extreme: "crue extrême",
+};
 const NIVEAUX = { info: "ⓘ Info", vigilance: "⚠ Vigilance", alerte: "⛔ Alerte" } as const;
 const signe = (v: number) => `${v > 0 ? "+" : v < 0 ? "−" : ""}${euro(Math.abs(v))}`;
 
@@ -246,7 +255,7 @@ export default function Estimateur({ communes, initial }: { communes: CommuneOpt
               <div className={s.marge}>
                 <p className="label">Marge de négociation</p>
                 <p className="valeur">
-                  {euro(r.marge_negociation.basse_eur)} à {euro(r.marge_negociation.haute_eur)} ({r.marge_negociation.pct.toLocaleString("fr-FR", { maximumFractionDigits: 1 })} %)
+                  {euro(r.marge_negociation.basse_eur)} à {euro(r.marge_negociation.haute_eur)} ({(r.marge_negociation.pct * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} %)
                 </p>
                 <p>{r.marge_negociation.explication}</p>
               </div>
@@ -268,10 +277,10 @@ export default function Estimateur({ communes, initial }: { communes: CommuneOpt
                   <tbody>
                     {r.facteurs.map((f) => (
                       <tr key={f.facteur}>
-                        <th scope="row">{f.facteur}</th>
-                        <td>{f.valeur ?? "n/d"}</td>
+                        <th scope="row">{FACTEURS[f.facteur] ?? f.facteur}</th>
+                        <td>{typeof f.valeur === "boolean" ? (f.valeur ? "oui" : "non") : f.valeur == null ? "n/d" : (VALEURS[String(f.valeur)] ?? String(f.valeur))}</td>
                         <td>
-                          {signe(f.impact_eur)} ({f.impact_pct > 0 ? "+" : f.impact_pct < 0 ? "−" : ""}{Math.abs(f.impact_pct).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} %){" "}
+                          {signe(f.impact_eur)} ({f.impact_pct > 0 ? "+" : f.impact_pct < 0 ? "−" : ""}{Math.abs(f.impact_pct * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} %){" "}
                           {f.impact_eur > 0 ? "hausse" : f.impact_eur < 0 ? "baisse" : "neutre"}
                         </td>
                       </tr>
@@ -285,7 +294,7 @@ export default function Estimateur({ communes, initial }: { communes: CommuneOpt
                 <h3>À vérifier avant d&apos;acheter ({r.a_verifier.length})</h3>
                 <ul className={s.verifier}>
                   {r.a_verifier.map((a) => (
-                    <li key={a.facteur + a.texte}><strong>{NIVEAUX[a.niveau] ?? a.niveau}</strong> · {a.facteur} : {a.texte}</li>
+                    <li key={a.facteur + a.texte}><strong>{NIVEAUX[a.niveau] ?? a.niveau}</strong> · {a.texte}</li>
                   ))}
                 </ul>
               </>
