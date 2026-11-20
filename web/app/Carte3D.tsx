@@ -67,7 +67,7 @@ export function Carte3D({
               `<p style="margin:2px 0"><strong>${esc(p.type)}</strong></p>` +
               `<p style="margin:2px 0">${p.prix_m2 != null ? p.prix_m2.toLocaleString('fr-FR') + ' €/m²' : 'n/d'}</p>` +
               `<p style="margin:2px 0"><em>${esc(p.date ?? 'n/d')}</em></p>` +
-            `<p style="margin:6px 0 0"><a href="/bien/${encodeURIComponent(p.id_mutation)}">Voir la fiche du bien</a></p>` +
+            `<p style="margin:6px 0 0"><a href="/vente/${encodeURIComponent(p.id_mutation)}">Voir la fiche du bien</a></p>` +
             `</div>`
           )
         )

@@ -4,8 +4,6 @@ URL : https://parcelle.pixelmorph.tech (VPS, Dokploy) · API : interne au compos
 
 Pour : un couple, une famille ou des colocataires qui cherche à acheter dans le Loiret, qui doit décider dans quelle commune chercher, pour quel budget
 
-Branche de travail : `dev-sprint1-ro` (`main` intacte).
-
 Données : DGFiP, DVF géolocalisées (Etalab), Loiret, ventes d'un logement 2021-2025 (46 022 ventes, 325 communes), Licence Ouverte 2.0
 
 Framework : FastAPI sépare les calculs (pandas, cache) de l'affichage et sert une API réutilisable (bonus back-end séparé). Next.js rend la page côté serveur avec les données préchargées, donc elle s'affiche complète dès la première visite, y compris sur téléphone.
@@ -20,7 +18,7 @@ Depuis la version intermédiaire : filtres budget, période, surface, jardin, ga
 
 Couche IA générique : compatible OpenAI, résumé de l'agrégat de la vue filtrée en 3 phrases (route POST /resume, clés IA_URL / IA_KEY / IA_MODEL).
 
-Depuis la version intermédiaire (design local) : carte Leaflet avec marqueurs géolocalisés (route /points), filtre `annee` (équivaut à annee_min = annee_max), icônes par type de bien.
+Depuis la version intermédiaire (design local) : vue Relief 3D MapLibre avec marqueurs géolocalisés (route /points), modèle 3D Three.js et comparaison commune sur /vente/[id], filtre `annee` (équivaut à annee_min = annee_max), icônes par type de bien.
 
 ## Lancer en local
 
@@ -49,9 +47,9 @@ Tests : `cd api && uv run pytest -q` (12 tests). Modèle : `cd api && uv run pyt
 
 ## Données
 
-`api/data/immobilier.parquet` est versionné. Pour le reconstruire depuis DVF (data.gouv.fr) : `cd api && uv run python prepare.py`. Filtres : ventes d'un seul logement, 10 k€-2 M€, 9-400 m², 300-8 000 €/m².
+`api/data/biens.parquet` est versionné : une ligne par vente (49 884, 2021 → juin 2026), DVF croisé avec BDNB, DPE ADEME, cadastre (piscines), Géorisques (argile, TRI, nappes), bruit, BPE et Filosofi. Reconstruit par `api/prepare_biens.py` depuis les données brutes. Pas d'adresse publiée. Filtres : ventes d'un seul logement, 10 k€-2 M€, 9-400 m², 300-8 000 €/m².
 
-`api/data/communes.geojson` : contours des 325 communes (GéoLoiret, Licence Ouverte 2.0). Colonnes ajoutées par prepare.py : avec_dependance, avec_jardin, avec_eau (lues sur les autres lignes de la vente).
+`api/data/communes.geojson` : contours des 325 communes (GéoLoiret, Licence Ouverte 2.0). Colonnes calculées : avec_dependance, avec_jardin, avec_eau (lues sur les autres lignes de la vente).
 
 ## Routes de l'API
 
@@ -79,7 +77,7 @@ Paramètre commun `type` : `Maison` | `Appartement` | `Tous` (défaut `Maison`).
 | `GET /communes/{code}/ventes?<filtres>&section=&limit=200` | `[{"id_mutation", "date_mutation" (YYYY-MM-DD), "type", "valeur_fonciere", "surface_reelle_bati", "nombre_pieces_principales", "prix_m2", "surface_terrain", "section", "avec_dependance", "avec_jardin", "avec_eau", "longitude", "latitude"}]`, plus récentes d'abord ; `limit` 1-1000 ; lon/lat null possibles |
 | `GET /estimation?type=Maison\|Appartement&code_commune=&surface=&pieces=&jardin=&dependance=&prix_demande=` | `{"prix_estime", "fourchette_basse", "fourchette_haute", "mae", "mape", "n_entrainement", "n_test", "comparables": {"n", "prix_median"}, "verdict": "au-dessus" \| "dans la fourchette" \| "au-dessous" \| null}` ; `verdict` null sans `prix_demande` ; 404 commune inconnue |
 | `GET /points?<filtres>&limit=` | `[{id_mutation, nom_commune, type, prix, surface, prix_m2, nombre_pieces, date, latitude, longitude}]`, ventes géolocalisées pour les marqueurs de la carte (max 2000, défaut 500) |
-| `POST /resume` | `{resume: str}` : résumé IA générique de l'agrégat `{kpis, communes}` (3 phrases FR, sans inventer de chiffre) |"
+| `POST /resume` | `{resume: str}` : résumé IA générique de l'agrégat `{kpis, communes}` (3 phrases FR, sans inventer de chiffre) |
 
 `prix_m2_median` et `valeur_median` sont `float | null` : un NaN pandas devient `null`. Le front affiche « n/d ».
 `type` invalide → 422. `min_ventes` borné 1-1000, `limit` borné 1-325.
@@ -104,3 +102,7 @@ docker compose ps                                                               
 ## Choix de design
 
 Direction « Cadastre » : esprit plan cadastral et grille de géomètre, typographies IBM Plex Sans et IBM Plex Mono, encre bleue, surligneur jaune pour le constat.
+
+## Serveur MCP
+
+`mcp/serveur.py` interroge les données en local (stdio) : recherche de biens, fiche, stats de commune, comparaison, estimation avec marge. Installation dans `mcp/README.md`.

@@ -108,7 +108,7 @@ def test_evolution_tranches():
     lignes = r.json()
     ordre = ["moins de 50 m²", "50 à 80 m²", "80 à 120 m²", "120 m² et plus"]
     assert list(dict.fromkeys(x["tranche"] for x in lignes)) == ordre
-    assert {x["annee"] for x in lignes} == set(range(2021, 2026))
+    assert {x["annee"] for x in lignes} == set(range(2021, 2027))
     assert all(x["n"] >= 1 and "prix_m2_median" in x for x in lignes)
 
 
@@ -166,12 +166,88 @@ def test_annee_equivaut_annee_min_max():
     assert a == b
 
 
-def test_bien_connu_et_inconnu():
-    pt = client.get("/points", params={"limit": 1}).json()[0]
-    r = client.get(f"/bien/{pt['id_mutation']}")
-    assert r.status_code == 200
-    b = r.json()
-    assert b["id_mutation"] == pt["id_mutation"]
-    assert b["nom_commune"] == pt["nom_commune"]
+def test_filtres_v3_reduisent_n_ventes():
+    tout = client.get("/kpis", params={"type": "Tous"}).json()["n_ventes"]
+    for p in [
+        {"piscine": True},
+        [("dpe", "F"), ("dpe", "G")],
+        {"hors_inondable": True},
+        {"argile_max": "moyen", "hors_nappe": True},
+        {"medecins_min": 2, "gare_max_m": 2000, "materiau": "pierre"},
+        {"construit_apres": 1950, "construit_avant": 2000, "ecoles_min": 1},
+    ]:
+        q = [("type", "Tous"), *(p.items() if isinstance(p, dict) else p)]
+        n = client.get("/kpis", params=q).json()["n_ventes"]
+        assert 0 < n < tout, p
+    assert client.get("/kpis", params={"dpe": "H"}).status_code == 422
+
+
+def test_ventes_proprietes_v3():
+    f = client.get("/ventes", params={"limit": 1}).json()["features"][0]
+    attendues = {"piscine", "dpe_classe", "alea_argile", "bat_annee_construction"}
+    assert attendues <= f["properties"].keys()
+
+
+def test_bien_fiche_et_404():
+    b = client.get("/biens/2021-789576").json()
+    assert len(b["parcelles"]) == 11 and b["piscines"]["features"]
+    assert b["piscines"]["features"][0]["geometry"]["type"] == "Polygon"
+    assert all(a["niveau"] in {"info", "vigilance", "alerte"} for a in b["attention"])
+    assert "adresse" not in b
     assert "prix_m2_median_commune" in b and "ecart_pct" in b
-    assert client.get("/bien/inconnu").status_code == 404
+    assert client.get("/biens/inconnu").status_code == 404
+
+
+def test_estimation_risques_et_marge():
+    p = {"type": "Maison", "code_commune": "45234", "surface": 100, "pieces": 5}
+    risques = {**p, "alea_argile": "fort", "zone_inondable": "frequent", "dpe": "G"}
+    e = client.get("/estimation", params=risques).json()
+    impacts = {f["facteur"]: f["impact_eur"] for f in e["facteurs"]}
+    assert impacts["alea_argile"] <= 0 and impacts["zone_inondable_scenario"] <= 0
+    assert min(impacts.values()) < 0
+    assert e["marge_negociation"]["haute_eur"] > 0
+    # aléas sans décote mesurée : au moins leur forfait indicatif (crue fréquente 8 %, argile fort 4 %)
+    args = {a["facteur"]: a for a in e["marge_negociation"]["arguments"]}
+    assert (
+        args["zone_inondable_scenario"]["pct"] >= 0.08
+        and args["alea_argile"]["pct"] >= 0.04
+    )
+    assert {a["facteur"] for a in e["a_verifier"]} >= {"alea_argile", "dpe_classe"}
+    sain = {**p, "alea_argile": "faible", "zone_inondable": "aucune", "dpe": "D"}
+    assert (
+        client.get("/estimation", params=sain).json()["prix_estime"] > e["prix_estime"]
+    )
+
+
+def test_contexte_orleans():
+    c = client.get("/contexte", params={"longitude": 1.909, "latitude": 47.902}).json()
+    assert c["code_commune"] == "45234" and c["distance_m"] is not None
+    assert client.get("/contexte", params={"longitude": 1.9}).status_code == 422
+
+
+def test_adresses_tous_les_mots_numero_compris():
+    r = client.get("/adresses", params={"q": "1 rue de bourgogne orleans"}).json()
+    assert 0 < len(r) <= 8
+    assert {"libelle", "code_insee", "longitude", "latitude"} <= r[0].keys()
+    assert all(a["code_insee"] == "45234" for a in r)
+    assert all(a["libelle"].startswith("1") for a in r)
+    assert client.get("/adresses", params={"q": "ru"}).status_code == 422
+
+
+def test_autour_rayon():
+    p = {"longitude": 1.909, "latitude": 47.902, "type": "Tous"}
+    petit = client.get("/autour", params={**p, "rayon_m": 200}).json()
+    grand = client.get("/autour", params={**p, "rayon_m": 2000}).json()
+    assert 0 < petit["ventes"]["total"] < grand["ventes"]["total"]
+    assert len(grand["ventes"]["features"]) <= 2000
+    assert all(
+        f["properties"]["distance_m"] <= 200 for f in petit["ventes"]["features"]
+    )
+    assert grand["stats"]["n"] == grand["ventes"]["total"]
+    assert "Maison" in grand["stats"]["par_type"]
+    assert grand["point"]["code_commune"] == "45234"
+    eq = {e["famille"]: e for e in grand["equipements"]}
+    assert len(eq) == 6 and eq["ecole"]["n"] > 0
+    assert eq["gare"]["plus_proche"]["distance_m"] >= 0
+    assert client.get("/autour", params={**p, "rayon_m": 50}).status_code == 422
+    assert client.get("/autour", params={**p, "rayon_m": 5001}).status_code == 422

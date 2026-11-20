@@ -39,7 +39,7 @@ export default async function Page({ searchParams }: PageProps<"/">) {
 
   return (
     <main>
-      <p className="source">DGFiP, DVF géolocalisées (Etalab) · Loiret · 2021-2025 · Licence Ouverte 2.0</p>
+      <p className="source">DGFiP, DVF géolocalisées (Etalab) · Loiret · 2021 au 1er semestre 2026 · Risques : Géorisques, BRGM · Équipements : Insee BPE · Licence Ouverte 2.0</p>
       <h1>Où chercher un logement autour d&apos;Orléans, et pour quel budget ?</h1>
 
       <Filtres q={q} action="/" evo={vue === "tout" ? vue : undefined} />

@@ -2,10 +2,15 @@
 
 import { startTransition, useActionState, useId, useMemo, useState } from "react";
 import Carte from "../Carte";
-import { estimer, type Etat } from "./actions";
+import CarteClic from "./CarteClic";
+import { contexte, estimer, type Etat } from "./actions";
 import s from "./estimer.module.css";
 
 export type CommuneOption = { code_commune: string; nom_commune: string };
+export type Prefill = {
+  commune: string; type: string; surface: string; pieces: string;
+  annee_construction: string; dpe: string; piscine: string;
+};
 
 const nombre = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 });
 const euro = (v: number) => `${nombre.format(v)} €`;
@@ -17,10 +22,12 @@ const VERDICTS = {
   "au-dessous": { signe: "▼", texte: "Au-dessous de la fourchette : le prix demandé est bas, vérifiez l'état du bien.", classe: s.bas },
 } as const;
 
-function Commune({ communes }: { communes: CommuneOption[] }) {
+function Commune({ communes, initiale }: { communes: CommuneOption[]; initiale: string }) {
   const id = useId();
-  const [texte, setTexte] = useState("");
-  const [code, setCode] = useState("");
+  // le lien de la fiche vente peut donner le code INSEE ou le nom
+  const depart = communes.find((c) => c.code_commune === initiale || sans(c.nom_commune) === sans(initiale));
+  const [texte, setTexte] = useState(depart?.nom_commune ?? "");
+  const [code, setCode] = useState(depart?.code_commune ?? "");
   const [ouvert, setOuvert] = useState(false);
   const [actif, setActif] = useState(0);
   const liste = communes.filter((c) => sans(c.nom_commune).includes(sans(texte))).slice(0, 8);
@@ -77,7 +84,37 @@ function Commune({ communes }: { communes: CommuneOption[] }) {
   );
 }
 
-export default function Estimateur({ communes }: { communes: CommuneOption[] }) {
+const NAPPES = { aucune: "Aucune", inondation_cave: "Inondation de cave", debordement_nappe: "Débordement de nappe" } as const;
+const FACTEURS: Record<string, string> = {
+  dpe_classe: "DPE", alea_argile: "Argile (aléa)", zone_inondable_scenario: "Zone inondable",
+  sensibilite_nappe: "Remontée de nappe", bruit_lden_max_db: "Bruit", perimetre_mh_500m: "Monument historique à 500 m",
+  piscine: "Piscine",
+};
+const VALEURS: Record<string, string> = {
+  debordement_nappe: "débordement", inondation_cave: "caves inondables", aucune: "aucune",
+  frequent: "crue fréquente", extreme: "crue extrême",
+};
+const NIVEAUX = { info: "ⓘ Info", vigilance: "⚠ Vigilance", alerte: "⛔ Alerte" } as const;
+const signe = (v: number) => `${v > 0 ? "+" : v < 0 ? "−" : ""}${euro(Math.abs(v))}`;
+
+export default function Estimateur({ communes, initial }: { communes: CommuneOption[]; initial: Prefill }) {
+  const [risques, setRisques] = useState({ argile: "", inondable: "", nappe: "", bruit: "" });
+  const [point, setPoint] = useState<[number, number] | null>(null);
+  const [msgCarte, setMsgCarte] = useState("");
+  const choisirPoint = async (lon: number, lat: number) => {
+    setPoint([lon, lat]);
+    setMsgCarte("Lecture des risques…");
+    const c = await contexte(lon, lat);
+    if (c.erreur) return setMsgCarte(c.erreur);
+    const b = c.bruit ?? c.bruit_lden_max_db;
+    setRisques({
+      argile: c.alea_argile ?? "",
+      inondable: c.zone_inondable_scenario ?? "",
+      nappe: c.sensibilite_nappe ?? "",
+      bruit: b == null ? "" : String(Math.round(b)),
+    });
+    setMsgCarte("Risques lus au point choisi (vente la plus proche à moins de 150 m) ; vous pouvez les corriger.");
+  };
   const [etat, action, attente] = useActionState<Etat, FormData>(estimer, {});
   const r = etat.resultat;
   const budget = etat.budget;
@@ -107,22 +144,22 @@ export default function Estimateur({ communes }: { communes: CommuneOption[] }) 
         }}
         className={`panel ${s.form}`}
       >
-        <Commune communes={communes} />
+        <Commune communes={communes} initiale={initial.commune} />
         <fieldset className={s.champ}>
           <legend>Type de bien</legend>
           <div className={s.choix}>
-            <label><input type="radio" name="type" value="Maison" defaultChecked /> Maison</label>
-            <label><input type="radio" name="type" value="Appartement" /> Appartement</label>
+            <label><input type="radio" name="type" value="Maison" defaultChecked={initial.type !== "Appartement"} /> Maison</label>
+            <label><input type="radio" name="type" value="Appartement" defaultChecked={initial.type === "Appartement"} /> Appartement</label>
           </div>
         </fieldset>
         <div className={s.deux}>
           <div className={s.champ}>
             <label htmlFor="surface">Surface (m²)</label>
-            <input id="surface" name="surface" type="number" inputMode="numeric" min={9} max={400} defaultValue={100} required />
+            <input id="surface" name="surface" type="number" inputMode="numeric" min={9} max={400} defaultValue={initial.surface || 100} required />
           </div>
           <div className={s.champ}>
             <label htmlFor="pieces">Pièces principales</label>
-            <input id="pieces" name="pieces" type="number" inputMode="numeric" min={1} max={8} defaultValue={4} required />
+            <input id="pieces" name="pieces" type="number" inputMode="numeric" min={1} max={8} defaultValue={initial.pieces || 4} required />
           </div>
         </div>
         <fieldset className={s.champ}>
@@ -130,6 +167,69 @@ export default function Estimateur({ communes }: { communes: CommuneOption[] }) 
           <div className={s.choix}>
             <label><input type="checkbox" name="jardin" /> Jardin</label>
             <label><input type="checkbox" name="dependance" /> Garage, cave ou parking</label>
+            <label><input type="checkbox" name="piscine" defaultChecked={initial.piscine === "true"} /> Piscine</label>
+          </div>
+        </fieldset>
+        <div className={s.deux}>
+          <div className={s.champ}>
+            <label htmlFor="annee_construction">Année de construction</label>
+            <input id="annee_construction" name="annee_construction" type="number" inputMode="numeric" min={1500} max={2026} defaultValue={initial.annee_construction} />
+          </div>
+          <div className={s.champ}>
+            <label htmlFor="dpe">DPE (classe énergie)</label>
+            <select id="dpe" name="dpe" defaultValue={/^[A-G]$/.test(initial.dpe) ? initial.dpe : ""}>
+              <option value="">Inconnu</option>
+              {"ABCDEFG".split("").map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+        </div>
+        <div className={s.champ}>
+          <label htmlFor="materiau_murs">Matériau des murs (facultatif)</label>
+          <input id="materiau_murs" name="materiau_murs" list="materiaux" maxLength={40} placeholder="ex. pierre, brique, béton" />
+          <datalist id="materiaux">
+            {["pierre", "brique", "béton", "parpaing", "bois", "pisé"].map((m) => <option key={m} value={m} />)}
+          </datalist>
+        </div>
+        <fieldset className={`${s.champ} ${s.risques}`}>
+          <legend>Risques et nuisances du terrain</legend>
+          <p className={s.aide}>Cliquez sur la carte pour les remplir, ou choisissez à la main.</p>
+          <CarteClic onChoix={choisirPoint} point={point} />
+          <p className={s.aide} role="status">
+            {point ? `Point choisi : ${point[1].toFixed(5)} N, ${point[0].toFixed(5)} E. ` : "Aucun point choisi. "}
+            {msgCarte}
+          </p>
+          <input type="hidden" name="longitude" value={point ? point[0] : ""} />
+          <input type="hidden" name="latitude" value={point ? point[1] : ""} />
+          <div className={s.deux}>
+            <div className={s.champ}>
+              <label htmlFor="alea_argile">Aléa argile (retrait-gonflement)</label>
+              <select id="alea_argile" name="alea_argile" value={risques.argile} onChange={(e) => setRisques({ ...risques, argile: e.target.value })}>
+                <option value="">Inconnu</option>
+                <option value="faible">Faible</option>
+                <option value="moyen">Moyen</option>
+                <option value="fort">Fort</option>
+              </select>
+            </div>
+            <div className={s.champ}>
+              <label htmlFor="zone_inondable">Zone inondable (Loire)</label>
+              <select id="zone_inondable" name="zone_inondable" value={risques.inondable} onChange={(e) => setRisques({ ...risques, inondable: e.target.value })}>
+                <option value="">Hors zone ou inconnu</option>
+                <option value="frequent">Crue fréquente</option>
+                <option value="moyen">Crue moyenne</option>
+                <option value="extreme">Crue extrême</option>
+              </select>
+            </div>
+            <div className={s.champ}>
+              <label htmlFor="sensibilite_nappe">Nappe phréatique</label>
+              <select id="sensibilite_nappe" name="sensibilite_nappe" value={risques.nappe} onChange={(e) => setRisques({ ...risques, nappe: e.target.value })}>
+                <option value="">Inconnu</option>
+                {Object.entries(NAPPES).map(([k, t]) => <option key={k} value={k}>{t}</option>)}
+              </select>
+            </div>
+            <div className={s.champ}>
+              <label htmlFor="bruit_db">Bruit (dB, Lden)</label>
+              <input id="bruit_db" name="bruit_db" type="number" inputMode="numeric" min={0} max={120} value={risques.bruit} onChange={(e) => setRisques({ ...risques, bruit: e.target.value })} />
+            </div>
           </div>
         </fieldset>
         <div className={s.champ}>
@@ -138,7 +238,7 @@ export default function Estimateur({ communes }: { communes: CommuneOption[] }) 
         </div>
         <button type="submit" className="bouton" disabled={attente}>{attente ? "Calcul…" : "Estimer"}</button>
         <p className={s.aide}>
-          DVF ne dit rien de la piscine, de l&apos;étage ni du DPE ; nombre de pièces = séjour + chambres.
+          Nombre de pièces = séjour + chambres. L&apos;étage n&apos;est pas connu des données DVF.
         </p>
       </form>
 
@@ -151,6 +251,25 @@ export default function Estimateur({ communes }: { communes: CommuneOption[] }) 
             <p className="label">Prix estimé</p>
             <p className="valeur surligne">{euro(r.prix_estime)}</p>
             <p>Fourchette : de {euro(r.fourchette_basse)} à {euro(r.fourchette_haute)}.</p>
+            {r.marge_negociation && (
+              <div className={s.marge}>
+                <p className="label">Marge de négociation</p>
+                <p className="valeur">
+                  {euro(r.marge_negociation.basse_eur)} à {euro(r.marge_negociation.haute_eur)} ({(r.marge_negociation.pct * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} %)
+                </p>
+                {r.marge_negociation.arguments && r.marge_negociation.arguments.length > 0 && (
+                  <ul>
+                    {r.marge_negociation.arguments.map((a) => (
+                      <li key={a.facteur}>
+                        {a.libelle} : −{euro(a.montant_eur)} ({(a.pct * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} %),{" "}
+                        {a.source === "forfait" ? "forfait indicatif" : "mesuré sur les ventes"}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <p>{r.marge_negociation.explication}</p>
+              </div>
+            )}
             <p>
               Erreur moyenne du modèle : ± {euro(r.mae)} ({(r.mape * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} % du prix),
               mesurée sur {nombre.format(r.n_test)} ventes.
@@ -159,6 +278,45 @@ export default function Estimateur({ communes }: { communes: CommuneOption[] }) 
               Comparables dans la commune : {nombre.format(r.comparables.n)} ventes
               {r.comparables.prix_median != null && <>, prix médian {euro(r.comparables.prix_median)}</>}.
             </p>
+            {r.facteurs && r.facteurs.length > 0 && (
+              <>
+                <h3>{r.facteurs.length} facteurs qui pèsent sur le prix</h3>
+                <table className={s.table}>
+                  <caption className={s.cache}>Impact de chaque facteur sur le prix estimé et montant à négocier, en euros</caption>
+                  <thead><tr><th scope="col">Facteur</th><th scope="col">Valeur</th><th scope="col">Impact mesuré sur les ventes</th><th scope="col">À négocier</th></tr></thead>
+                  <tbody>
+                    {r.facteurs.map((f) => {
+                      const arg = r.marge_negociation?.arguments?.find((a) => a.facteur === f.facteur);
+                      return (
+                      <tr key={f.facteur}>
+                        <th scope="row">{FACTEURS[f.facteur] ?? f.facteur}</th>
+                        <td>{typeof f.valeur === "boolean" ? (f.valeur ? "oui" : "non") : f.valeur == null ? "n/d" : (VALEURS[String(f.valeur)] ?? String(f.valeur))}</td>
+                        <td>
+                          {signe(f.impact_eur)} ({f.impact_pct > 0 ? "+" : f.impact_pct < 0 ? "−" : ""}{Math.abs(f.impact_pct * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} %){" "}
+                          {f.impact_eur > 0 ? "hausse" : f.impact_eur < 0 ? "baisse" : "aucun effet mesuré"}
+                        </td>
+                        <td>
+                          {arg
+                            ? `−${euro(arg.montant_eur)} (${(arg.pct * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} %)${arg.source === "forfait" ? ", forfait indicatif" : ""}`
+                            : "—"}
+                        </td>
+                      </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </>
+            )}
+            {r.a_verifier && r.a_verifier.length > 0 && (
+              <>
+                <h3>À vérifier avant d&apos;acheter ({r.a_verifier.length})</h3>
+                <ul className={s.verifier}>
+                  {r.a_verifier.map((a) => (
+                    <li key={a.facteur + a.texte}><strong>{NIVEAUX[a.niveau] ?? a.niveau}</strong> · {a.texte}</li>
+                  ))}
+                </ul>
+              </>
+            )}
             {ecartBudget != null && (
               <p>
                 {ecartBudget === 0
