@@ -58,8 +58,6 @@ export default async function Page({ searchParams }: PageProps<"/">) {
         </div>
       </section>
 
-      <Evolution q={q} vue={vue} lignes={evo} />
-
       <Carte communes={communesCarte} ventes={ventes} cadrage={LOIRET} qs={q.toString()} />
       {ventes.total > ventes.features.length && (
         <p className="detail avertissement">
@@ -67,6 +65,8 @@ export default async function Page({ searchParams }: PageProps<"/">) {
           recherche (les plus récentes). Affinez les filtres pour tout voir.
         </p>
       )}
+
+      <Evolution q={q} vue={vue} lignes={evo} />
 
       <section className="panel graphique" aria-labelledby="titre-graphique">
         <h2 id="titre-graphique">{titre}</h2>

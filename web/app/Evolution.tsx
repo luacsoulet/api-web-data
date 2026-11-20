@@ -100,14 +100,24 @@ export default function Evolution({
             }
             const fin = fins.find((f) => f.i === i);
             return (
-              <g key={s.nom}>
-                <path d={d} fill="none" stroke={c} strokeWidth={2} strokeDasharray={t || undefined} />
+              <g key={s.nom} className="evo-serie">
+                <path className="evo-trace" d={d} fill="none" stroke={c} strokeWidth={2} strokeDasharray={t || undefined} />
+                {/* zone de survol large et invisible : nom de la tranche au survol de la courbe */}
+                <path d={d} fill="none" stroke="transparent" strokeWidth={14}>
+                  <title>{s.nom}</title>
+                </path>
                 {ANNEES.map((a) => {
                   const p = s.pts.get(a);
-                  return p?.v == null ? null : (
-                    <circle key={a} cx={x(a)} cy={y(p.v)} r={4} fill="var(--paper)" stroke={c} strokeWidth={2}>
-                      <title>{`${s.nom}, ${a} : ${euros(p.v)}, ${nombre.format(p.n)} ventes`}</title>
-                    </circle>
+                  if (p?.v == null) return null;
+                  const bx = Math.min(Math.max(x(a), G + 90), W - D - 90);
+                  return (
+                    <g key={a} className="evo-point" tabIndex={0}>
+                      <circle cx={x(a)} cy={y(p.v)} r={12} fill="transparent" />
+                      <circle cx={x(a)} cy={y(p.v)} r={4} fill="var(--paper)" stroke={c} strokeWidth={2} />
+                      <text className="evo-bulle" x={bx} y={y(p.v) - 14} textAnchor="middle">
+                        {`${s.nom} · ${a} · ${euros(p.v)} · ${nombre.format(p.n)} ventes`}
+                      </text>
+                    </g>
                   );
                 })}
                 {fin && (
