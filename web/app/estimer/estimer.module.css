@@ -28,3 +28,13 @@
 .bas { border-style: dashed; }
 .carte { grid-column: 1 / -1; font-variant-numeric: tabular-nums; }
 .carte h2 { margin: 0 0 0.5rem; }
+.champ select { min-height: 44px; padding: 8px 12px; font: inherit; background: var(--paper); color: var(--ink); border: 1px solid var(--ink); border-radius: 0; width: 100%; }
+.form select:focus-visible { outline: 3px solid var(--parcel); outline-offset: 2px; }
+.risques { gap: 12px; }
+.marge { border: 3px solid var(--ink); padding: 12px; margin-bottom: 0.75rem; }
+.marge p { margin-bottom: 0.5rem; }
+.table { width: 100%; border-collapse: collapse; margin-bottom: 0.75rem; font-size: 0.9rem; }
+.table th, .table td { text-align: left; padding: 8px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+.verifier { margin: 0 0 0.75rem; padding-left: 1.25rem; }
+.verifier li { margin-bottom: 0.5rem; }
+.cache { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
