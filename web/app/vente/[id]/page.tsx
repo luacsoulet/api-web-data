@@ -212,6 +212,8 @@ export default async function PageVente({ params }: PageProps<"/vente/[id]">) {
             terrain={num("surface_terrain")}
             pieces={num("nombre_pieces_principales")}
             commune={b.nom_commune}
+            niveaux={num("bat_nb_niveaux")}
+            hauteur={num("bat_hauteur_moy")}
           />
           <p className="alternative">Modèle illustratif : dimensions réelles, agencement théorique (le plan réel est inconnu).</p>
         </section>

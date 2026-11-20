@@ -10,6 +10,8 @@ export type Props = {
   terrain: number | null; // m²
   pieces: number | null;
   commune: string;
+  niveaux?: number | null; // BDNB bat_nb_niveaux
+  hauteur?: number | null; // BDNB bat_hauteur_moy, m
 };
 
 const HAUTEUR_ETAGE = 2.5;
@@ -17,7 +19,7 @@ const fr = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
 const fr1 = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
 /** Modèle 3D à l'échelle réelle (1 unité = 1 m) : emprise, terrain et découpage théorique en pièces. */
-export function Maison3D({ type, surface, terrain, pieces, commune }: Props) {
+export function Maison3D({ type, surface, terrain, pieces, commune, niveaux = null, hauteur = null }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const appart = type !== 'Maison';
 
@@ -26,14 +28,17 @@ export function Maison3D({ type, surface, terrain, pieces, commune }: Props) {
     if (!el) return;
 
     // 2 niveaux si grande surface, ou si un plain-pied ne tiendrait pas sur le terrain
-    const etages = !appart && surface != null && (surface > 130 || (terrain != null && terrain > 0 && surface > terrain * 0.7)) ? 2 : 1;
+    // niveaux BDNB si connus (maison seulement : pour un appartement c'est l'immeuble), sinon déduits
+    const connu = !appart && niveaux != null && niveaux >= 1 ? Math.min(Math.round(niveaux), 5) : null;
+    const etages = connu ?? (!appart && surface != null && (surface > 130 || (terrain != null && terrain > 0 && surface > terrain * 0.7)) ? 2 : 1);
+    const hEtage = !appart && hauteur != null && hauteur > 0 ? Math.min(Math.max(hauteur / etages, 2.2), 4) : HAUTEUR_ETAGE;
     const emprise = surface != null && surface > 0 ? surface / etages : 0;
     const w = Math.sqrt(emprise * 1.4);
     const d = w > 0 ? emprise / w : 0;
     const cote = terrain != null && terrain > 0 ? Math.sqrt(terrain) : 0;
     // pelouse seulement si la maison tient dedans (sinon elle déborderait du carré)
     const pelouse = !appart && cote >= w && cote >= d && cote > 0;
-    const rayon = Math.max(pelouse ? cote : 0, w, d, 10);
+    const rayon = Math.max(pelouse ? cote : 0, w, d, 10, 2 * hEtage * etages); // hauteur incluse dans le cadrage
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xf0f0f0);
@@ -63,14 +68,14 @@ export function Maison3D({ type, surface, terrain, pieces, commune }: Props) {
       const cloisons = new THREE.MeshStandardMaterial({ color: 0xb08968 });
       const dalle = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.35 });
       const e = 0.3;
-      const h = HAUTEUR_ETAGE * etages;
+      const h = hEtage * etages;
 
       boite(w, 0.05, d, new THREE.MeshStandardMaterial({ color: 0xffffff }), 0, 0.03, 0);
       boite(w, h, e, murs, 0, h / 2, -d / 2 + e / 2);
       boite(w, h, e, murs, 0, h / 2, d / 2 - e / 2);
       boite(e, h, d, murs, -w / 2 + e / 2, h / 2, 0);
       boite(e, h, d, murs, w / 2 - e / 2, h / 2, 0);
-      if (etages === 2) boite(w, 0.15, d, dalle, 0, HAUTEUR_ETAGE, 0);
+      for (let f = 1; f < etages; f++) boite(w, 0.15, d, dalle, 0, f * hEtage, 0);
 
       // pièces réparties entre étages (total exact), chaque étage découpé en rangées
       const total = Math.max(1, Math.round(pieces ?? 1));
@@ -78,7 +83,7 @@ export function Maison3D({ type, surface, terrain, pieces, commune }: Props) {
         const n = Math.max(1, Math.floor(total / etages) + (f < total % etages ? 1 : 0));
         const cols = Math.ceil(Math.sqrt(n));
         const rows = Math.ceil(n / cols);
-        const y = f * HAUTEUR_ETAGE + 0.6;
+        const y = f * hEtage + 0.6;
         const hr = d / rows;
         for (let j = 0; j < rows; j++) {
           const dansRangee = Math.min(cols, n - j * cols); // dernière rangée : pièces plus larges
@@ -129,7 +134,7 @@ export function Maison3D({ type, surface, terrain, pieces, commune }: Props) {
       renderer.dispose();
       renderer.domElement.remove();
     };
-  }, [appart, surface, terrain, pieces]);
+  }, [appart, surface, terrain, pieces, niveaux, hauteur]);
 
   const nd = (v: number | null, u: string) => (v == null ? 'n/d' : `${fr.format(v)} ${u}`);
   const ratio = surface && terrain ? ` (×${fr1.format(terrain / surface)} l'habitable)` : '';
