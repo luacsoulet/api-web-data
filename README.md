@@ -37,6 +37,10 @@ cd api && uv run pytest -q
 cd api && uv run ruff check . && uv run ruff format --check .
 ```
 
+## Données
+
+`api/data/immobilier.parquet` est versionné. Pour le reconstruire depuis DVF (data.gouv.fr) : `cd api && uv run python prepare.py`. Filtres : ventes d'un seul logement, 10 k€-2 M€, 9-400 m², 300-8 000 €/m².
+
 ## Routes de l'API
 
 Paramètre commun `type` : `Maison` | `Appartement` | `Tous` (défaut `Maison`). Toutes les médianes, jamais des moyennes.
