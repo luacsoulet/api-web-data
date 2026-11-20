@@ -16,6 +16,10 @@ Retours pris en compte : <à compléter avec le retour reçu à la version inter
 
 Depuis la version intermédiaire : filtres budget, période, surface, jardin, garage appliqués partout ; carte MapLibre 2D (fond OpenFreeMap) avec communes colorées et ventes de la recherche en points ; drill-down commune → section → ventes ; estimateur ML ; thème clair par défaut avec bouton sombre ; déploiement Docker sur VPS.
 
+## Documentation
+
+La documentation détaillée est dans [`docs/`](docs/README.md) : [architecture](docs/architecture.md), [référence de l'API](docs/api.md), [front-end](docs/frontend.md), [données embarquées et modèle](docs/donnees.md), [base enrichie](docs/base-enrichie.md) et [dictionnaire des colonnes](docs/dictionnaire-colonnes.md), [personnalisation avec les données data.gouv.fr](docs/personnalisation-datagouv.md), [guide de développement](docs/developpement.md) et [déploiement](docs/deploiement.md).
+
 ## Lancer en local
 
 Deux terminaux.
@@ -39,7 +43,7 @@ cd api && uv run pytest -q
 cd api && uv run ruff check . && uv run ruff format --check .
 ```
 
-Tests : `cd api && uv run pytest -q` (12 tests). Modèle : `cd api && uv run python modele.py` (environ 10 s ; fait automatiquement au build Docker).
+Tests : `cd api && uv run pytest -q` (17 tests). Modèle : `cd api && uv run python modele.py` (environ 10 s ; fait automatiquement au build Docker).
 
 ## Données
 
@@ -56,7 +60,7 @@ Paramètre commun `type` : `Maison` | `Appartement` | `Tous` (défaut `Maison`).
 | `type` | `Maison` \| `Appartement` \| `Tous` | `Maison` | |
 | `budget_max` | int \| absent | absent | 10 000 - 2 000 000 |
 | `annee_min`, `annee_max` | int | 2021, 2025 | 2021 - 2025, `annee_min <= annee_max` sinon 422 |
-| `surface_min` | int \| absent | absent | 9 - 400 |
+| `surface_min`, `surface_max` | int \| absent | absent | 9 - 400, `surface_min <= surface_max` sinon 422 |
 | `pieces_min` | int \| absent | absent | 1 - 10 |
 | `jardin`, `dependance` | bool | false | true = seulement les ventes avec cette option |
 
@@ -66,12 +70,13 @@ Paramètre commun `type` : `Maison` | `Appartement` | `Tous` (défaut `Maison`).
 | `GET /kpis?<filtres>` | `{"n_ventes", "prix_m2_median", "valeur_median", "n_communes"}` |
 | `GET /communes?<filtres>&min_ventes=30&limit=15` | `[{"code_commune", "nom_commune", "n", "prix_m2_median", "valeur_median"}]`, prix décroissant |
 | `GET /evolution?<filtres>` | `[{"annee", "n", "prix_m2_median"}]` |
+| `GET /evolution/tranches?<filtres>` | `[{"tranche", "annee", "n", "prix_m2_median"}]` ; tranches `moins de 50 m²`, `50 à 80 m²`, `80 à 120 m²`, `120 m² et plus` |
 | `GET /carte?<filtres>` | GeoJSON FeatureCollection des 325 communes ; `properties`: `code_insee`, `commune`, `n` (0 possible), `prix_m2_median` (null si n=0), `valeur_median` (null si n=0). Géométrie inchangée. |
-| `GET /ventes?<filtres>&limit=3000` | GeoJSON FeatureCollection de points (ventes avec coordonnées) correspondant aux filtres, plus récentes d'abord, `limit` 1-5000 ; `properties`: `id_mutation`, `date_mutation`, `type`, `valeur_fonciere`, `surface_reelle_bati`, `nombre_pieces_principales`, `prix_m2`, `nom_commune`, `section`, `avec_jardin`, `avec_dependance` ; en-tête de réponse ou champ `total` : nombre total de ventes filtrées (avant limit) |
+| `GET /ventes?<filtres>&limit=3000` | GeoJSON FeatureCollection de points (ventes avec coordonnées) correspondant aux filtres, plus récentes d'abord, `limit` 1-5000 ; `properties`: `id_mutation`, `date_mutation`, `type`, `valeur_fonciere`, `surface_reelle_bati`, `nombre_pieces_principales`, `prix_m2`, `nom_commune`, `section`, `avec_jardin`, `avec_dependance` ; champ `total` : nombre total de ventes filtrées (avant limit) |
 | `GET /communes/{code}?<filtres>` | `{"code_commune", "nom_commune", "n", "prix_m2_median", "valeur_median"}` ; 404 si code inconnu |
 | `GET /communes/{code}/sections?<filtres>` | `[{"section", "n", "prix_m2_median", "valeur_median"}]`, prix décroissant |
 | `GET /communes/{code}/ventes?<filtres>&section=&limit=200` | `[{"id_mutation", "date_mutation" (YYYY-MM-DD), "type", "valeur_fonciere", "surface_reelle_bati", "nombre_pieces_principales", "prix_m2", "surface_terrain", "section", "avec_dependance", "avec_jardin", "avec_eau", "longitude", "latitude"}]`, plus récentes d'abord ; `limit` 1-1000 ; lon/lat null possibles |
-| `GET /estimation?type=Maison\|Appartement&code_commune=&surface=&pieces=&jardin=&dependance=&prix_demande=` | `{"prix_estime", "fourchette_basse", "fourchette_haute", "mae", "mape", "n_entrainement", "n_test", "comparables": {"n", "prix_median"}, "verdict": "au-dessus" \| "dans la fourchette" \| "au-dessous" \| null}` ; `verdict` null sans `prix_demande` ; 404 commune inconnue |
+| `GET /estimation?type=Maison\|Appartement&code_commune=&surface=&pieces=&jardin=&dependance=&prix_demande=` | `{"prix_estime", "fourchette_basse", "fourchette_haute", "mae", "mape", "n_entrainement", "n_test", "comparables": {"n", "prix_median"}, "comparables_ventes": GeoJSON (300 points au plus), "verdict": "au-dessus" \| "dans la fourchette" \| "au-dessous" \| null}` ; `verdict` null sans `prix_demande` ; 404 commune inconnue |
 
 `prix_m2_median` et `valeur_median` sont `float | null` : un NaN pandas devient `null`. Le front affiche « n/d ».
 `type` invalide → 422. `min_ventes` borné 1-1000, `limit` borné 1-325.
