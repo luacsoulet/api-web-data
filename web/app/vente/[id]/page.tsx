@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { bien as chargerBien, type Attention, type Collection } from "@/lib/api";
+import { bien as chargerBien, estimation, type Attention, type Collection } from "@/lib/api";
 import Bien3D from "./Bien3D";
 import PlanCadastral from "./PlanCadastral";
 
@@ -135,6 +135,13 @@ export default async function PageVente({ params }: PageProps<"/vente/[id]">) {
     if (brut(col) != null) estimer.set(cle, String(typeof brut(col) === "number" ? Math.round(Number(brut(col))) : brut(col)));
   if (brut("piscine")) estimer.set("piscine", "true");
 
+  const q = new URLSearchParams({ type: b.type, code_commune: b.code_commune });
+  for (const [cle, col] of [["surface", "surface_reelle_bati"], ["pieces", "nombre_pieces_principales"], ["annee_construction", "bat_annee_construction"], ["dpe", "dpe_classe"]] as const)
+    if (brut(col) != null) q.set(cle, String(typeof brut(col) === "number" ? Math.round(Number(brut(col))) : brut(col)));
+  if (brut("valeur_fonciere") != null) q.set("prix_demande", String(brut("valeur_fonciere")));
+  if (brut("piscine")) q.set("piscine", "true");
+  const est = q.has("surface") && q.has("pieces") ? await estimation(q).catch(() => null) : null;
+
   const titre = `${b.type} ${brut("surface_reelle_bati") != null ? `de ${n("surface_reelle_bati", " m²")} ` : ""}vendu${b.type === "Maison" ? "e" : ""} ${n("valeur_fonciere", " €")} à ${b.nom_commune}`;
 
   return (
@@ -152,6 +159,7 @@ export default async function PageVente({ params }: PageProps<"/vente/[id]">) {
       <div className="fiche-actions">
         <Link className="bouton" href={`/estimer?${estimer}`}>Estimer un bien comme celui-ci</Link>
       </div>
+      {est && (<section className="panel" aria-labelledby="titre-estimation"><h2 id="titre-estimation">Estimation du modèle</h2><p className="constat">Prix estimé {nombre.format(est.prix_estime)} € (fourchette {nombre.format(est.fourchette_basse)} – {nombre.format(est.fourchette_haute)} €). Prix réel {est.verdict ?? "non comparable"}. Erreur moyenne du modèle : {nombre.format(est.mae)} €.</p></section>)}
 
       <div className="fiche">
         <section className="panel" aria-labelledby="titre-plan">
