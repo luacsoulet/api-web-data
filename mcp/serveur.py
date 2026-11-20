@@ -52,7 +52,9 @@ def _code(commune: str) -> str:
     if _norm(c) in _NOMS:
         return _NOMS[_norm(c)]
     proches = [n for n in _NOMS if _norm(c) in n][:5]
-    raise ValueError(f"Commune '{commune}' inconnue dans le Loiret. Proches : {proches}")
+    raise ValueError(
+        f"Commune '{commune}' inconnue dans le Loiret. Proches : {proches}"
+    )
 
 
 def _propre(v):
@@ -62,18 +64,30 @@ def _propre(v):
     return v.item() if hasattr(v, "item") else v
 
 
+# site public : chaque vente a sa page /vente/<id_mutation> (plan cadastral, points d'attention)
+SITE = os.environ.get("IMMO_SITE_URL", "https://parcelle.pixelmorph.tech").rstrip("/")
+
+
+def _lien(id_mutation: str) -> str:
+    return f"{SITE}/vente/{urllib.parse.quote(id_mutation, safe='')}"
+
+
 def _lignes(df: pd.DataFrame, cols: list[str]) -> list[dict]:
     return [{c: _propre(r[c]) for c in cols} for _, r in df.iterrows()]
 
 
 def _api(chemin: str, params: dict | None = None):
-    q = urllib.parse.urlencode({k: v for k, v in (params or {}).items() if v is not None})
+    q = urllib.parse.urlencode(
+        {k: v for k, v in (params or {}).items() if v is not None}
+    )
     url = f"{API}{chemin}" + (f"?{q}" if q else "")
     try:
         with urllib.request.urlopen(url, timeout=30) as r:
             return json.load(r)
     except urllib.error.HTTPError as e:
-        raise RuntimeError(f"L'API a répondu {e.code} : {e.read().decode()[:300]}") from e
+        raise RuntimeError(
+            f"L'API a répondu {e.code} : {e.read().decode()[:300]}"
+        ) from e
     except OSError as e:
         raise RuntimeError(
             f"API injoignable sur {API} ({e}). Lancer l'API (cd api && uv run fastapi dev) "
@@ -97,7 +111,8 @@ def chercher_biens(
     À utiliser pour « trouve-moi des maisons à Olivet sous 300 000 € sans risque inondation ».
     commune : nom ou code INSEE. dpe_max : pire classe acceptée (ex. 'C' garde A, B, C).
     argile_max : aléa retrait-gonflement maximal accepté. hors_inondable : exclut la zone TRI.
-    Retourne des lignes compactes ; utiliser fiche_bien(id_mutation) pour le détail."""
+    Retourne des lignes compactes, chacune avec « lien » vers sa page sur le site (à donner à
+    l'utilisateur) ; utiliser fiche_bien(id_mutation) pour le détail."""
     d = BIENS
     if commune:
         d = d[d["code_commune"] == _code(commune)]
@@ -116,7 +131,8 @@ def chercher_biens(
         d = d[d["zone_inondable_scenario"].isna()]
     if argile_max:
         d = d[d["alea_argile"].map(ARGILE).fillna(-1) <= ARGILE[argile_max]]
-    return _lignes(d.sort_values("prix_m2").head(limite), COLONNES_COMPACTES)
+    lignes = _lignes(d.sort_values("prix_m2").head(limite), COLONNES_COMPACTES)
+    return [ligne | {"lien": _lien(ligne["id_mutation"])} for ligne in lignes]
 
 
 @mcp.tool()
@@ -124,15 +140,18 @@ def fiche_bien(id_mutation: str) -> dict:
     """Fiche complète d'une vente (toutes les colonnes) avec ses « points d'attention »
     (argile, inondation, DPE, bruit, amiante/plomb…). À utiliser après chercher_biens pour
     creuser un bien. Nécessite l'API locale pour les points d'attention ; sans elle, repli
-    sur la ligne du parquet seule."""
+    sur la ligne du parquet seule. « lien » : page de la vente sur le site, à donner à l'utilisateur."""
     try:
-        return _api(f"/biens/{urllib.parse.quote(id_mutation, safe='')}")
+        return _api(f"/biens/{urllib.parse.quote(id_mutation, safe='')}") | {
+            "lien": _lien(id_mutation)
+        }
     except RuntimeError as e:
         ligne = BIENS[BIENS["id_mutation"] == id_mutation]
         if ligne.empty:
             raise ValueError(f"Vente {id_mutation} inconnue") from e
         fiche = {c: _propre(v) for c, v in ligne.iloc[0].items()}
         fiche["attention"] = None
+        fiche["lien"] = _lien(id_mutation)
         fiche["avertissement"] = str(e)
         return fiche
 
@@ -180,9 +199,17 @@ def comparer_communes(
     out = []
     for c in communes:
         code = _code(c)
-        d = BIENS[(BIENS["code_commune"] == code) & (BIENS["type"] == type) & (BIENS["annee"] >= 2024)]
+        d = BIENS[
+            (BIENS["code_commune"] == code)
+            & (BIENS["type"] == type)
+            & (BIENS["annee"] >= 2024)
+        ]
         ctx = COMMUNES[COMMUNES["code_commune"] == code].iloc[0]
-        part = round(d["zone_inondable_scenario"].notna().mean() * 100, 1) if len(d) else None
+        part = (
+            round(d["zone_inondable_scenario"].notna().mean() * 100, 1)
+            if len(d)
+            else None
+        )
         out.append(
             {
                 "commune": ctx["nom_commune"],
@@ -192,7 +219,9 @@ def comparer_communes(
                 "prix_m2_median": _propre(d["prix_m2"].median()),
                 "surface_mediane": _propre(d["surface_reelle_bati"].median()),
                 "part_zone_inondable_pct": part,
-                "loyer_m2": _propre(ctx["loyer_app_m2" if type == "Appartement" else "loyer_mai_m2"]),
+                "loyer_m2": _propre(
+                    ctx["loyer_app_m2" if type == "Appartement" else "loyer_mai_m2"]
+                ),
             }
         )
     return out
@@ -213,7 +242,8 @@ def estimer_bien(
     piscine: bool | None = None,
     alea_argile: Literal["faible", "moyen", "fort"] | None = None,
     zone_inondable: Literal["frequent", "moyen", "extreme"] | None = None,
-    sensibilite_nappe: Literal["aucune", "inondation_cave", "debordement_nappe"] | None = None,
+    sensibilite_nappe: Literal["aucune", "inondation_cave", "debordement_nappe"]
+    | None = None,
     bruit_db: Annotated[float | None, Field(ge=0, le=120)] = None,
     longitude: Annotated[float | None, Field(ge=-180, le=180)] = None,
     latitude: Annotated[float | None, Field(ge=-90, le=90)] = None,
@@ -233,7 +263,9 @@ def estimer_bien(
         "longitude": longitude, "latitude": latitude,
     }  # fmt: skip
     r = _api("/estimation", p)
-    r.pop("comparables_ventes", None)  # GeoJSON pour la carte du site, trop gros pour un assistant
+    r.pop(
+        "comparables_ventes", None
+    )  # GeoJSON pour la carte du site, trop gros pour un assistant
     return r
 
 
