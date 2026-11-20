@@ -7,19 +7,38 @@
   --muted: oklch(0.45 0.05 255);
   --sans: var(--font-sans), system-ui, sans-serif;
   --mono: var(--font-mono), ui-monospace, monospace;
+  /* clair par défaut, même si l'appareil est en mode sombre ; le bouton bascule */
+  color-scheme: light;
 }
 
-/* variante sombre : cyanotype, fond bleu nuit et traits bleu pâle */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --paper: oklch(0.22 0.05 255);
-    --ink: oklch(0.94 0.02 240);
-    --parcel: oklch(0.72 0.12 245);
-    --highlight: oklch(0.55 0.12 95);
-    --grid: oklch(0.3 0.05 255);
-    --muted: oklch(0.78 0.04 245);
-  }
+/* variante sombre, sur demande : cyanotype, fond bleu nuit et traits bleu pâle */
+:root[data-theme="dark"] {
+  --paper: oklch(0.22 0.05 255);
+  --ink: oklch(0.94 0.02 240);
+  --parcel: oklch(0.72 0.12 245);
+  --highlight: oklch(0.55 0.12 95);
+  --grid: oklch(0.3 0.05 255);
+  --muted: oklch(0.78 0.04 245);
+  color-scheme: dark;
 }
+
+.theme {
+  /* dans le flux, sur sa propre ligne : ne chevauche jamais la source sur mobile */
+  display: block;
+  margin: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 0 auto;
+  min-height: 44px;
+  padding: 0 14px;
+  font: 0.8rem/1 var(--mono);
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  cursor: pointer;
+}
+.theme:hover { background: var(--grid); }
+.theme:active { background: var(--parcel); }
+.theme:focus-visible { outline: 2px solid var(--parcel); outline-offset: 2px; }
+.theme-clair, :root[data-theme="dark"] .theme-sombre { display: none; }
+:root[data-theme="dark"] .theme-clair { display: inline; }
 
 * { box-sizing: border-box; }
 
