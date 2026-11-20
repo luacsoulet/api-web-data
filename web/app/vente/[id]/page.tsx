@@ -217,8 +217,18 @@ export default async function PageVente({ params }: PageProps<"/vente/[id]">) {
             commune={b.nom_commune}
             niveaux={num("bat_nb_niveaux")}
             hauteur={num("bat_hauteur_moy")}
+            geometrie={b.geometrie ?? null}
+            murs={brut("bat_materiau_murs") == null ? null : String(brut("bat_materiau_murs"))}
+            toit={brut("bat_materiau_toit") == null ? null : String(brut("bat_materiau_toit"))}
+            annee={num("bat_annee_construction")}
+            jardin={Boolean(brut("avec_jardin"))}
+            nbLogements={num("bat_nb_logements")}
           />
-          <p className="alternative">Modèle illustratif : dimensions réelles, agencement théorique (le plan réel est inconnu).</p>
+          <p className="alternative">
+            {b.geometrie
+              ? "Forme réelle de la parcelle et des bâtiments (cadastre Etalab) ; hauteurs BDNB ; agencement intérieur inconnu."
+              : "Modèle illustratif : dimensions réelles, agencement théorique (le plan réel est inconnu)."}
+          </p>
         </section>
 
         {groupes.map(([nom, lignes]) => (

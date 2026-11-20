@@ -189,7 +189,10 @@ def test_ventes_proprietes_v3():
     assert attendues <= f["properties"].keys()
 
 
-def test_bien_fiche_et_404():
+def test_bien_fiche_et_404(monkeypatch):
+    import cadastre
+
+    monkeypatch.setattr(cadastre, "geometrie", lambda *a, **k: None)  # pas de réseau
     b = client.get("/biens/2021-789576").json()
     assert len(b["parcelles"]) == 11 and b["piscines"]["features"]
     assert b["piscines"]["features"][0]["geometry"]["type"] == "Polygon"
@@ -197,6 +200,7 @@ def test_bien_fiche_et_404():
     assert "adresse" not in b
     assert "hauteur_inondation_max_m" in b
     assert "prix_m2_median_commune" in b and "ecart_pct" in b
+    assert b["geometrie"] is None or isinstance(b["geometrie"], dict)
     assert client.get("/biens/inconnu").status_code == 404
 
 
@@ -253,3 +257,36 @@ def test_autour_rayon():
     assert eq["gare"]["plus_proche"]["distance_m"] >= 0
     assert client.get("/autour", params={**p, "rayon_m": 50}).status_code == 422
     assert client.get("/autour", params={**p, "rayon_m": 5001}).status_code == 422
+
+
+def test_cadastre_geometrie_hors_ligne(monkeypatch):
+    import cadastre
+
+    def carre(x, y, c=0.0001):
+        return {"type": "Polygon", "coordinates": [[[x, y], [x + c, y], [x + c, y + c], [x, y + c], [x, y]]]}
+
+    def fake(insee, couche):
+        if couche == "parcelles":
+            return [{"properties": {"id": "P"}, "geometry": carre(2.0, 48.0, 0.001)}]
+        return [
+            {"properties": {"type": "02"}, "geometry": carre(2.0003, 48.0003)},
+            {"properties": {"type": "01"}, "geometry": carre(2.01, 48.01)},
+        ]
+
+    monkeypatch.setattr(cadastre, "_features", fake)
+    cadastre._commune.cache_clear()
+    try:
+        g = cadastre.geometrie("45000", ["P"])
+        assert [b["type"] for b in g["batiments"]] == ["leger"]
+    finally:
+        cadastre._commune.cache_clear()
+
+
+def test_cadastre_geometrie_pure():
+    import cadastre
+
+    carre = [[0, 0], [10, 0], [10, 10], [0, 10]]
+    assert cadastre.point_dans_polygone(5, 5, carre) and not cadastre.point_dans_polygone(15, 5, carre)
+    assert cadastre.centroide(carre) == (5, 5)
+    x, y = cadastre.projeter([[2.0, 48.0], [2.001, 48.001]], 2.0, 48.0)
+    assert x == [0, 0] and abs(y[0] - 74.5) < 0.1 and abs(y[1] - 110.54) < 0.01

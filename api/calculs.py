@@ -8,6 +8,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+import cadastre
+
 DATA = Path(__file__).parent / "data" / "biens.parquet"
 PISCINES = Path(__file__).parent / "data" / "piscines.parquet"
 COMMUNES = Path(__file__).parent / "data" / "communes.geojson"
@@ -467,13 +469,15 @@ def bien(id_mutation: str) -> dict | None:
     voisines = df[(df["code_commune"] == r["code_commune"]) & (df["type"] == r["type"])]
     med = _nombre(voisines["prix_m2"].median())
     prix_m2 = r["prix_m2"]
+    piscines = _piscines(parcelles)
     return {
         **r,
         **{k: v for k, v in _ligne(_complements(), id_mutation).items() if k not in r or r[k] is None},
         "prix_m2_median_commune": med,
         "ecart_pct": None if med is None or prix_m2 is None or med == 0 else round((prix_m2 / med - 1) * 100, 1),
         "parcelles": parcelles,
-        "piscines": _piscines(parcelles),
+        "piscines": piscines,
+        "geometrie": cadastre.geometrie(r["code_commune"], parcelles, piscines),
         "attention": attention(r),
     }
 

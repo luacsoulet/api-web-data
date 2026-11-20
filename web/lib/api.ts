@@ -84,11 +84,17 @@ export type VenteCommune = {
   longitude: number | null;
   latitude: number | null;
 } & V3Props;
+/** formes réelles du cadastre en mètres locaux (x est, y nord) autour du centre des parcelles */
+export type Geometrie = {
+  parcelles: number[][][];
+  batiments: { type: "dur" | "leger"; anneau: number[][] }[];
+  piscines: number[][][];
+};
 export type Attention = { facteur: string; niveau: "info" | "vigilance" | "alerte"; texte: string };
 type Valeur = string | number | boolean | null;
 /** GET /biens/{id} : toutes les colonnes de biens.parquet (NaN → null) + parcelles, piscines, attention */
 export type Bien = {
-  [colonne: string]: Valeur | string[] | Attention[] | Collection<unknown>;
+  [colonne: string]: Valeur | string[] | Attention[] | Collection<unknown> | Geometrie | null;
   id_mutation: string;
   date_mutation: string;
   type: string;
@@ -99,6 +105,7 @@ export type Bien = {
   latitude: number | null;
   parcelles: string[] | string | null;
   piscines: Collection<{ id_parcelle: string; surface_m2: number | null }>;
+  geometrie: Geometrie | null;
   attention: Attention[];
   prix_m2_median_commune: number | null;
   ecart_pct: number | null;

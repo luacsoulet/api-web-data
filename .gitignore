@@ -13,3 +13,4 @@ node_modules/
 *.err
 datasets/
 *.bak-*
+api/data/cadastre/
