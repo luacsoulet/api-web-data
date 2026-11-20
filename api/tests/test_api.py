@@ -81,3 +81,39 @@ def test_estimation():
     assert e["verdict"] == "au-dessus"
     p["code_commune"] = "99999"
     assert client.get("/estimation", params=p).status_code == 404
+
+
+def test_estimation_comparables_ventes():
+    p = {"type": "Maison", "code_commune": "45232", "surface": 100, "pieces": 4}
+    e = client.get("/estimation", params=p).json()
+    c = e["comparables_ventes"]
+    assert c["type"] == "FeatureCollection"
+    assert len(c["features"]) <= min(300, e["comparables"]["n"])
+    assert all(f["geometry"]["type"] == "Point" for f in c["features"])
+
+
+def test_surface_max_reduit_n_ventes():
+    tout = client.get("/kpis").json()["n_ventes"]
+    assert client.get("/kpis", params={"surface_max": 80}).json()["n_ventes"] < tout
+
+
+def test_surfaces_inversees_422():
+    r = client.get("/kpis", params={"surface_min": 100, "surface_max": 50})
+    assert r.status_code == 422
+
+
+def test_evolution_tranches():
+    r = client.get("/evolution/tranches", params={"type": "Tous"})
+    assert r.status_code == 200
+    lignes = r.json()
+    ordre = ["moins de 50 m²", "50 à 80 m²", "80 à 120 m²", "120 m² et plus"]
+    assert list(dict.fromkeys(x["tranche"] for x in lignes)) == ordre
+    assert {x["annee"] for x in lignes} == set(range(2021, 2026))
+    assert all(x["n"] >= 1 and "prix_m2_median" in x for x in lignes)
+
+
+def test_tranches_bornees_par_le_filtre_surface():
+    # filtre 50-120 m² : pas de courbe « moins de 50 » ni « 120 et plus » faite de bornes seules
+    params = {"type": "Tous", "surface_min": 50, "surface_max": 120}
+    lignes = client.get("/evolution/tranches", params=params).json()
+    assert {x["tranche"] for x in lignes} == {"50 à 80 m²", "80 à 120 m²"}

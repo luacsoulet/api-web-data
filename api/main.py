@@ -20,6 +20,7 @@ def filtres(
     annee_min: Annotated[int, Query(ge=2021, le=2025)] = 2021,
     annee_max: Annotated[int, Query(ge=2021, le=2025)] = 2025,
     surface_min: Annotated[int | None, Query(ge=9, le=400)] = None,
+    surface_max: Annotated[int | None, Query(ge=9, le=400)] = None,
     pieces_min: Annotated[int | None, Query(ge=1, le=10)] = None,
     jardin: bool = False,
     dependance: bool = False,
@@ -27,6 +28,14 @@ def filtres(
     # dépendance partagée par toutes les routes de données
     if annee_min > annee_max:
         raise HTTPException(422, "annee_min doit être inférieure ou égale à annee_max")
+    if (
+        surface_min is not None
+        and surface_max is not None
+        and surface_min > surface_max
+    ):
+        raise HTTPException(
+            422, "surface_min doit être inférieure ou égale à surface_max"
+        )
     return locals()
 
 
@@ -72,6 +81,11 @@ def communes(
 @app.get("/evolution")
 def evolution(f: Filtres):
     return calculs.evolution(f)
+
+
+@app.get("/evolution/tranches")
+def evolution_tranches(f: Filtres):
+    return calculs.evolution_tranches(f)
 
 
 @app.get("/carte")
@@ -154,5 +168,6 @@ def estimation(
         "n_entrainement": m["n_train"],
         "n_test": m["n_test"],
         "comparables": calculs.comparables(type, code_commune, surface),
+        "comparables_ventes": calculs.comparables_ventes(type, code_commune, surface),
         "verdict": verdict,
     }

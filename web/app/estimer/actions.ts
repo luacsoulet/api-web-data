@@ -1,5 +1,7 @@
 "use server";
 
+import type { Collection, VentePoint } from "@/lib/api";
+
 export type Estimation = {
   prix_estime: number;
   fourchette_basse: number;
@@ -9,9 +11,10 @@ export type Estimation = {
   n_entrainement: number;
   n_test: number;
   comparables: { n: number; prix_median: number | null };
+  comparables_ventes: Collection<VentePoint>;
   verdict: "au-dessus" | "dans la fourchette" | "au-dessous" | null;
 };
-export type Etat = { resultat?: Estimation; erreur?: string };
+export type Etat = { resultat?: Estimation; budget?: number; erreur?: string };
 
 const API_URL = process.env.API_URL ?? "http://127.0.0.1:8000";
 
@@ -39,7 +42,7 @@ export async function estimer(_: Etat, f: FormData): Promise<Etat> {
     const res = await fetch(`${API_URL}/estimation?${q}`, { cache: "no-store" });
     if (res.status === 404) return { erreur: "Commune inconnue : choisissez-en une dans la liste." };
     if (!res.ok) return { erreur: "Le service d'estimation a refusé la demande. Vérifiez les valeurs saisies." };
-    return { resultat: (await res.json()) as Estimation };
+    return { resultat: (await res.json()) as Estimation, budget: prix > 0 ? prix : undefined };
   } catch {
     return { erreur: "Le service d'estimation est indisponible. Réessayez dans un instant." };
   }

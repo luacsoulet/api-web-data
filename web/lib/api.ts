@@ -16,6 +16,7 @@ export type Commune = {
   valeur_median: number | null;
 };
 export type Evolution = { annee: number; n: number; prix_m2_median: number | null };
+export type EvolutionTranche = Evolution & { tranche: string };
 export type Section = { section: string; n: number; prix_m2_median: number | null; valeur_median: number | null };
 
 export type Feature<P> = { type: "Feature"; geometry: unknown; properties: P };
@@ -87,8 +88,12 @@ export function filtres(sp: Params): URLSearchParams {
     if (amin && amin !== 2021) q.set("annee_min", String(amin));
     if (amax && amax !== 2025) q.set("annee_max", String(amax));
   }
-  const surface = entier(sp.surface_min, 9, 400);
-  if (surface) q.set("surface_min", String(surface));
+  const smin = entier(sp.surface_min, 9, 400);
+  const smax = entier(sp.surface_max, 9, 400);
+  if (!(smin && smax && smin > smax)) {
+    if (smin) q.set("surface_min", String(smin));
+    if (smax) q.set("surface_max", String(smax));
+  }
   if (sp.jardin === "true") q.set("jardin", "true");
   if (sp.dependance === "true") q.set("dependance", "true");
   return q;
@@ -105,6 +110,7 @@ async function get<T>(path: string): Promise<T> {
 export const kpis = (q: URLSearchParams) => get<Kpis>(`/kpis?${q}`);
 export const communes = (q: URLSearchParams) => get<Commune[]>(`/communes?${q}&limit=15&min_ventes=30`);
 export const evolution = (q: URLSearchParams) => get<Evolution[]>(`/evolution?${q}`);
+export const evolutionTranches = (q: URLSearchParams) => get<EvolutionTranche[]>(`/evolution/tranches?${q}`);
 export const carte = (q: URLSearchParams) => get<Collection<CommuneCarte>>(`/carte?${q}`);
 export const sections = (code: string, q: URLSearchParams) =>
   get<Section[]>(`/communes/${encodeURIComponent(code)}/sections?${q}`);

@@ -1,6 +1,7 @@
 "use client";
 
-import { startTransition, useActionState, useId, useState } from "react";
+import { startTransition, useActionState, useId, useMemo, useState } from "react";
+import Carte from "../Carte";
 import { estimer, type Etat } from "./actions";
 import s from "./estimer.module.css";
 
@@ -79,6 +80,20 @@ function Commune({ communes }: { communes: CommuneOption[] }) {
 export default function Estimateur({ communes }: { communes: CommuneOption[] }) {
   const [etat, action, attente] = useActionState<Etat, FormData>(estimer, {});
   const r = etat.resultat;
+  const budget = etat.budget;
+  const comparables = r?.comparables_ventes;
+  const points = comparables?.features;
+  const cadrage = useMemo<[number, number, number, number] | null>(() => {
+    if (!points?.length) return null;
+    const c = points.map((f) => (f.geometry as { coordinates: [number, number] }).coordinates);
+    const [xs, ys] = [c.map((p) => p[0]), c.map((p) => p[1])];
+    const m = 0.01; // marge ~1 km, utile aussi s'il n'y a qu'un point
+    return [Math.min(...xs) - m, Math.min(...ys) - m, Math.max(...xs) + m, Math.max(...ys) + m];
+  }, [points]);
+  const prix = (points ?? []).map((f) => f.properties.valeur_fonciere).sort((a, b) => a - b);
+  const mediane = prix.length ? (prix[Math.floor((prix.length - 1) / 2)] + prix[Math.ceil((prix.length - 1) / 2)]) / 2 : 0;
+  const sous = budget ? prix.filter((p) => p < budget).length : 0;
+  const ecartBudget = budget && r ? budget - r.prix_estime : null;
   const v = r?.verdict ? VERDICTS[r.verdict] : null;
 
   return (
@@ -118,7 +133,7 @@ export default function Estimateur({ communes }: { communes: CommuneOption[] }) 
           </div>
         </fieldset>
         <div className={s.champ}>
-          <label htmlFor="prix">Prix demandé (€, facultatif)</label>
+          <label htmlFor="prix">Votre budget ou prix demandé (€, facultatif)</label>
           <input id="prix" name="prix_demande" type="number" inputMode="numeric" min={1000} step="any" />
         </div>
         <button type="submit" className="bouton" disabled={attente}>{attente ? "Calcul…" : "Estimer"}</button>
@@ -144,6 +159,13 @@ export default function Estimateur({ communes }: { communes: CommuneOption[] }) 
               Comparables dans la commune : {nombre.format(r.comparables.n)} ventes
               {r.comparables.prix_median != null && <>, prix médian {euro(r.comparables.prix_median)}</>}.
             </p>
+            {ecartBudget != null && (
+              <p>
+                {ecartBudget === 0
+                  ? "Votre budget est égal à l'estimation."
+                  : `Votre budget est ${euro(Math.abs(ecartBudget))} ${ecartBudget > 0 ? "au-dessus" : "au-dessous"} de l'estimation.`}
+              </p>
+            )}
             {v && (
               <p className={`${s.verdict} ${v.classe}`}>
                 <span aria-hidden="true">{v.signe}</span> {v.texte}
@@ -152,6 +174,24 @@ export default function Estimateur({ communes }: { communes: CommuneOption[] }) 
           </>
         )}
       </section>
+      {comparables && (
+        <div className={s.carte}>
+          {cadrage && points ? (
+            <>
+              <Carte
+                ventes={comparables}
+                cadrage={cadrage}
+                qs=""
+                budget={budget}
+                titre={`${points.length} ${points[0].properties.type.toLowerCase()}${points.length > 1 ? "s" : ""} comparable${points.length > 1 ? "s" : ""} vendu${points[0].properties.type === "Maison" ? "e" : ""}${points.length > 1 ? "s" : ""} à ${points[0].properties.nom_commune} (surface ±20 %)${budget ? `, dont ${sous} sous votre budget` : ""}${r && r.comparables.n > points.length ? ` · les ${points.length} plus récentes sur ${r.comparables.n}` : ""}`}
+              />
+              <p>Prix médian de ces ventes : {euro(mediane)}.{budget ? " Cliquez sur un point pour voir l'écart avec votre budget." : ""}</p>
+            </>
+          ) : (
+            <p>Aucune vente comparable avec coordonnées à afficher sur la carte.</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

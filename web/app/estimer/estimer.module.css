@@ -26,3 +26,5 @@
 .haut { border-style: solid; }
 .milieu { border-style: double; border-width: 4px; }
 .bas { border-style: dashed; }
+.carte { grid-column: 1 / -1; font-variant-numeric: tabular-nums; }
+.carte h2 { margin: 0 0 0.5rem; }
