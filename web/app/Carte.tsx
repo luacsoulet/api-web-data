@@ -223,11 +223,17 @@ export default function Carte({ communes, ventes, cadrage, qs }: Props) {
     `${ou(bornes[3])} et plus`,
   ];
 
+  // titre-constat quand la carte ne montre que des ventes (page commune)
+  const prixVentes = ventes.features.map((f) => f.properties.prix_m2).filter((p): p is number => p != null).sort((a, b) => a - b);
+  const medianeVentes = prixVentes.length ? prixVentes[Math.floor(prixVentes.length / 2)] : null;
+
   return (
     <section className="panel carte-panneau" aria-labelledby="titre-carte">
       <h2 id="titre-carte">{communes && haut && bas
           ? `${haut.commune} la plus chère (${ou(haut.prix_m2_median, " €/m²")}), ${bas.commune} la moins chère (${ou(bas.prix_m2_median, " €/m²")})`
-          : "Ventes sur la carte"}</h2>
+          : medianeVentes != null
+            ? `${ou(ventes.features.length)} vente${ventes.features.length > 1 ? "s" : ""} sur la carte, médiane ${ou(medianeVentes, " €/m²")}`
+            : "Aucune vente géolocalisée pour cette recherche"}</h2>
       {communes && (
         <div className="segments" role="group" aria-label="Couches affichées">
           {(

@@ -58,7 +58,7 @@ export default async function PageCommune({ params, searchParams }: PageProps<"/
       </nav>
       <h1>{c.nom_commune}{section ? `, section ${section}` : ""}</h1>
 
-      <Filtres q={q} action={base} />
+      <Filtres q={q} action={base} section={section} />
 
       <section className="kpis" aria-label="Indicateurs de la commune">
         <div className="panel surligne">

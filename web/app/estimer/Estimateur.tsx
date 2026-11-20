@@ -103,7 +103,7 @@ export default function Estimateur({ communes }: { communes: CommuneOption[] }) 
         <div className={s.deux}>
           <div className={s.champ}>
             <label htmlFor="surface">Surface (m²)</label>
-            <input id="surface" name="surface" type="number" inputMode="numeric" min={9} max={1000} defaultValue={100} required />
+            <input id="surface" name="surface" type="number" inputMode="numeric" min={9} max={400} defaultValue={100} required />
           </div>
           <div className={s.champ}>
             <label htmlFor="pieces">Pièces principales</label>
