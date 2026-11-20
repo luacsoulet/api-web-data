@@ -108,7 +108,7 @@ def test_evolution_tranches():
     lignes = r.json()
     ordre = ["moins de 50 m²", "50 à 80 m²", "80 à 120 m²", "120 m² et plus"]
     assert list(dict.fromkeys(x["tranche"] for x in lignes)) == ordre
-    assert {x["annee"] for x in lignes} == set(range(2021, 2026))
+    assert {x["annee"] for x in lignes} == set(range(2021, 2027))
     assert all(x["n"] >= 1 and "prix_m2_median" in x for x in lignes)
 
 
@@ -117,3 +117,55 @@ def test_tranches_bornees_par_le_filtre_surface():
     params = {"type": "Tous", "surface_min": 50, "surface_max": 120}
     lignes = client.get("/evolution/tranches", params=params).json()
     assert {x["tranche"] for x in lignes} == {"50 à 80 m²", "80 à 120 m²"}
+
+
+def test_filtres_v3_reduisent_n_ventes():
+    tout = client.get("/kpis", params={"type": "Tous"}).json()["n_ventes"]
+    for p in [
+        {"piscine": True},
+        [("dpe", "F"), ("dpe", "G")],
+        {"hors_inondable": True},
+        {"argile_max": "moyen", "hors_nappe": True},
+        {"medecins_min": 2, "gare_max_m": 2000, "materiau": "pierre"},
+        {"construit_apres": 1950, "construit_avant": 2000, "ecoles_min": 1},
+    ]:
+        q = [("type", "Tous"), *(p.items() if isinstance(p, dict) else p)]
+        n = client.get("/kpis", params=q).json()["n_ventes"]
+        assert 0 < n < tout, p
+    assert client.get("/kpis", params={"dpe": "H"}).status_code == 422
+
+
+def test_ventes_proprietes_v3():
+    f = client.get("/ventes", params={"limit": 1}).json()["features"][0]
+    attendues = {"piscine", "dpe_classe", "alea_argile", "bat_annee_construction"}
+    assert attendues <= f["properties"].keys()
+
+
+def test_bien_fiche_et_404():
+    b = client.get("/biens/2021-789576").json()
+    assert len(b["parcelles"]) == 11 and b["piscines"]["features"]
+    assert b["piscines"]["features"][0]["geometry"]["type"] == "Polygon"
+    assert all(a["niveau"] in {"info", "vigilance", "alerte"} for a in b["attention"])
+    assert "adresse" not in b
+    assert client.get("/biens/inconnu").status_code == 404
+
+
+def test_estimation_risques_et_marge():
+    p = {"type": "Maison", "code_commune": "45234", "surface": 100, "pieces": 5}
+    risques = {**p, "alea_argile": "fort", "zone_inondable": "frequent", "dpe": "G"}
+    e = client.get("/estimation", params=risques).json()
+    impacts = {f["facteur"]: f["impact_eur"] for f in e["facteurs"]}
+    assert impacts["alea_argile"] <= 0 and impacts["zone_inondable_scenario"] <= 0
+    assert min(impacts.values()) < 0
+    assert e["marge_negociation"]["haute_eur"] > 0
+    assert {a["facteur"] for a in e["a_verifier"]} >= {"alea_argile", "dpe_classe"}
+    sain = {**p, "alea_argile": "faible", "zone_inondable": "aucune", "dpe": "D"}
+    assert (
+        client.get("/estimation", params=sain).json()["prix_estime"] > e["prix_estime"]
+    )
+
+
+def test_contexte_orleans():
+    c = client.get("/contexte", params={"longitude": 1.909, "latitude": 47.902}).json()
+    assert c["code_commune"] == "45234" and c["distance_m"] is not None
+    assert client.get("/contexte", params={"longitude": 1.9}).status_code == 422

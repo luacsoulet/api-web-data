@@ -43,9 +43,9 @@ Tests : `cd api && uv run pytest -q` (12 tests). Modèle : `cd api && uv run pyt
 
 ## Données
 
-`api/data/immobilier.parquet` est versionné. Pour le reconstruire depuis DVF (data.gouv.fr) : `cd api && uv run python prepare.py`. Filtres : ventes d'un seul logement, 10 k€-2 M€, 9-400 m², 300-8 000 €/m².
+`api/data/biens.parquet` est versionné : une ligne par vente (49 884, 2021 → juin 2026), DVF croisé avec BDNB, DPE ADEME, cadastre (piscines), Géorisques (argile, TRI, nappes), bruit, BPE et Filosofi. Reconstruit par `api/prepare_biens.py` depuis les données brutes. Pas d'adresse publiée. Filtres : ventes d'un seul logement, 10 k€-2 M€, 9-400 m², 300-8 000 €/m².
 
-`api/data/communes.geojson` : contours des 325 communes (GéoLoiret, Licence Ouverte 2.0). Colonnes ajoutées par prepare.py : avec_dependance, avec_jardin, avec_eau (lues sur les autres lignes de la vente).
+`api/data/communes.geojson` : contours des 325 communes (GéoLoiret, Licence Ouverte 2.0). Colonnes calculées : avec_dependance, avec_jardin, avec_eau (lues sur les autres lignes de la vente).
 
 ## Routes de l'API
 
@@ -96,3 +96,7 @@ docker compose ps                                                               
 ## Choix de design
 
 Direction « Cadastre » : esprit plan cadastral et grille de géomètre, typographies IBM Plex Sans et IBM Plex Mono, encre bleue, surligneur jaune pour le constat.
+
+## Serveur MCP
+
+`mcp/serveur.py` interroge les données en local (stdio) : recherche de biens, fiche, stats de commune, comparaison, estimation avec marge. Installation dans `mcp/README.md`.

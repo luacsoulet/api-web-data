@@ -13,17 +13,32 @@ import modele
 app = FastAPI(title="Immo Orléans")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET"])
 
+Classe = Literal["A", "B", "C", "D", "E", "F", "G"]
+Alea = Literal["faible", "moyen", "fort"]
+
 
 def filtres(
     type: Literal["Maison", "Appartement", "Tous"] = "Maison",
     budget_max: Annotated[int | None, Query(ge=10_000, le=2_000_000)] = None,
-    annee_min: Annotated[int, Query(ge=2021, le=2025)] = 2021,
-    annee_max: Annotated[int, Query(ge=2021, le=2025)] = 2025,
+    annee_min: Annotated[int, Query(ge=2021, le=2026)] = 2021,
+    annee_max: Annotated[int, Query(ge=2021, le=2026)] = 2026,
     surface_min: Annotated[int | None, Query(ge=9, le=400)] = None,
     surface_max: Annotated[int | None, Query(ge=9, le=400)] = None,
     pieces_min: Annotated[int | None, Query(ge=1, le=10)] = None,
     jardin: bool = False,
     dependance: bool = False,
+    piscine: bool = False,
+    dpe: Annotated[list[Classe] | None, Query()] = None,
+    argile_max: Alea | None = None,
+    hors_inondable: bool = False,
+    hors_nappe: bool = False,
+    materiau: Annotated[str | None, Query(max_length=40)] = None,
+    construit_apres: Annotated[int | None, Query(ge=1000, le=2030)] = None,
+    construit_avant: Annotated[int | None, Query(ge=1000, le=2030)] = None,
+    medecins_min: Annotated[int | None, Query(ge=0, le=500)] = None,
+    ecoles_min: Annotated[int | None, Query(ge=0, le=500)] = None,
+    commerces_min: Annotated[int | None, Query(ge=0, le=500)] = None,
+    gare_max_m: Annotated[int | None, Query(ge=0, le=50_000)] = None,
 ) -> dict:
     # dépendance partagée par toutes les routes de données
     if annee_min > annee_max:
@@ -120,6 +135,89 @@ def ventes_commune(
     return calculs.ventes_commune(f, code, section, limit)
 
 
+@app.get("/biens/{id_mutation}")
+def bien(id_mutation: str):
+    b = calculs.bien(id_mutation)
+    if b is None:
+        raise HTTPException(404, f"Vente {id_mutation} inconnue")
+    return b
+
+
+Longitude = Annotated[float, Query(ge=-5.5, le=10)]
+Latitude = Annotated[float, Query(ge=41, le=51.5)]
+
+
+@app.get("/contexte")
+def contexte(longitude: Longitude, latitude: Latitude):
+    return calculs.contexte(longitude, latitude)
+
+
+# facteur -> colonnes ramenées à la valeur « sans défaut » pour mesurer son impact
+REFERENCES = {
+    "alea_argile": {"alea_argile": "faible"},
+    "zone_inondable_scenario": {"zone_inondable_scenario": None},
+    "sensibilite_nappe": {"sensibilite_nappe": "aucune"},
+    "dpe_classe": {"dpe_classe": "D"},
+    "bruit_lden_max_db": {"bruit_lden_max_db": None},
+    "perimetre_mh_500m": {"perimetre_mh_500m": False, "distance_mh_m": 600.0},
+    "piscine": {"piscine": False},
+}
+LIBELLES = {
+    "alea_argile": "argile",
+    "zone_inondable_scenario": "zone inondable",
+    "sensibilite_nappe": "remontée de nappe",
+    "dpe_classe": "DPE",
+    "bruit_lden_max_db": "bruit",
+    "perimetre_mh_500m": "périmètre monument historique",
+    "piscine": "piscine",
+}
+VALEURS = {
+    "debordement_nappe": "débordement",
+    "inondation_cave": "caves inondables",
+    "frequent": "crue fréquente",
+    "moyen": "moyen",
+    "extreme": "crue extrême",
+}
+MARGE_MAX = 0.15  # plafond de la marge justifiée par les défauts, en part du prix
+
+
+def _eur(x: float) -> str:
+    return f"{x:,.0f} €".replace(",", " ")
+
+
+def _marge(facteurs, prix, mae, prix_demande) -> dict:
+    neg = [f for f in facteurs if f["impact_eur"] < 0]
+    ref = prix_demande or prix
+    justifiee = min(-sum(f["impact_eur"] for f in neg), MARGE_MAX * ref)
+    haute = max(justifiee, prix_demande - prix) if prix_demande else justifiee
+    pct = haute / ref
+    pct_fr = f"{pct * 100:.1f} %".replace(".", ",")
+
+    def nom(f):
+        v = f["valeur"]
+        return LIBELLES[f["facteur"]] + ("" if isinstance(v, bool) else f" {v:g}" if isinstance(v, float) else f" {VALEURS.get(v, v)}")  # fmt: skip
+
+    if neg:
+        raisons = ", ".join(f"{nom(f)} ({_eur(f['impact_eur'])})" for f in neg)
+        texte = f"Jusqu'à {_eur(haute)} ({pct_fr}) de négociation justifiée par : {raisons}."
+    else:
+        texte = f"Aucun défaut connu ne justifie de baisse ; marge possible : {_eur(haute)} ({pct_fr})."
+    if prix_demande and prix_demande > prix:
+        texte += (
+            f" Le prix demandé dépasse l'estimation de {_eur(prix_demande - prix)}."
+        )
+    nuls = [nom(f) for f in facteurs if abs(f["impact_eur"]) < 1]
+    if nuls:
+        texte += f" Sans effet mesurable sur les ventes passées (mais à vérifier) : {', '.join(nuls)}."
+    texte += f" Erreur moyenne du modèle : ± {_eur(mae)}."
+    return {
+        "basse_eur": justifiee,
+        "haute_eur": haute,
+        "pct": pct,
+        "explication": texte,
+    }
+
+
 @app.get("/estimation")
 def estimation(
     type: Literal["Maison", "Appartement"],
@@ -129,26 +227,79 @@ def estimation(
     jardin: bool = False,
     dependance: bool = False,
     prix_demande: Annotated[float | None, Query(gt=0)] = None,
+    annee_construction: Annotated[int | None, Query(ge=1000, le=2030)] = None,
+    dpe: Classe | None = None,
+    materiau_murs: Annotated[str | None, Query(max_length=40)] = None,
+    piscine: bool = False,
+    alea_argile: Alea | None = None,
+    # « aucune » = hors zone inondable (ajout au contrat : sans lui on ne peut pas forcer « hors zone »)
+    zone_inondable: Literal["frequent", "moyen", "extreme", "aucune"] | None = None,
+    sensibilite_nappe: Literal["aucune", "inondation_cave", "debordement_nappe"]
+    | None = None,
+    bruit_db: Annotated[float | None, Query(ge=0, le=120)] = None,
+    longitude: Longitude | None = None,
+    latitude: Latitude | None = None,
 ):
-    if code_commune not in set(calculs.charger()["code_commune"]):
+    df = calculs.charger()
+    if code_commune not in set(df["code_commune"]):
         raise HTTPException(404, f"Commune {code_commune} inconnue")
+    if (longitude is None) != (latitude is None):
+        raise HTTPException(422, "longitude et latitude vont ensemble")
     m = charger_modele()
-    x = pd.DataFrame(
-        [
+
+    # risques et équipements : voisinage du point (< 150 m), sinon valeurs typiques de la commune
+    ctx = calculs.contexte(longitude, latitude) if longitude is not None else None
+    proche = ctx is not None and (ctx["distance_m"] or 1e9) <= calculs.VOISINAGE_M
+    bien = ctx if proche else calculs.valeurs_commune(code_commune)
+    # ce que l'utilisateur a saisi l'emporte sur le voisinage
+    if alea_argile:
+        bien["alea_argile"] = alea_argile
+    if zone_inondable:
+        bien["zone_inondable_scenario"] = None if zone_inondable == "aucune" else zone_inondable  # fmt: skip
+    if sensibilite_nappe:
+        bien["sensibilite_nappe"] = sensibilite_nappe
+    if bruit_db is not None:
+        bien["bruit_lden_max_db"] = bruit_db
+    bien |= {
+        "type": type,
+        "code_commune": code_commune,
+        "surface_reelle_bati": surface,
+        "nombre_pieces_principales": pieces,
+        # le contrat ne demande pas le terrain : médiane des ventes de la commune et du type
+        "surface_terrain": calculs.terrain_median(type, code_commune),
+        "annee": int(df["annee"].max()),
+        "avec_jardin": jardin,
+        "avec_dependance": dependance,
+        "piscine": piscine,
+        "bat_annee_construction": annee_construction,
+        "dpe_classe": dpe,
+        "bat_materiau_murs": materiau_murs.upper() if materiau_murs else None,
+    }
+
+    # contrefactuels : le même bien avec un facteur ramené à sa valeur de référence
+    variantes = {
+        f: ref
+        for f, ref in REFERENCES.items()
+        if bien.get(f) not in (None, False, *ref.values())
+        and not (f == "bruit_lden_max_db" and bien[f] < 55)
+    }
+    lignes = [bien, *({**bien, **ref} for ref in variantes.values())]
+    x = modele.preparer(pd.DataFrame(lignes).reindex(columns=modele.BRUTES))
+    preds = np.expm1(m["pipeline"].predict(x))
+    prix = float(preds[0])
+    facteurs = sorted(
+        (
             {
-                "type": type,
-                "code_commune": code_commune,
-                "surface_reelle_bati": surface,
-                "nombre_pieces_principales": pieces,
-                # le contrat ne demande pas le terrain : médiane des ventes de la commune et du type
-                "surface_terrain": calculs.terrain_median(type, code_commune),
-                "annee": 2025,
-                "avec_jardin": int(jardin),
-                "avec_dependance": int(dependance),
+                "facteur": f,
+                "valeur": bien[f],
+                "impact_eur": prix - float(p),
+                "impact_pct": (prix - float(p)) / prix,
             }
-        ]
-    )[modele.FEATURES]
-    prix = float(np.expm1(m["pipeline"].predict(x)[0]))
+            for f, p in zip(variantes, preds[1:])
+        ),
+        key=lambda f: f["impact_eur"],
+    )
+
     basse, haute = max(prix - m["mae"], 0.0), prix + m["mae"]
     verdict = None
     if prix_demande is not None:
@@ -170,4 +321,9 @@ def estimation(
         "comparables": calculs.comparables(type, code_commune, surface),
         "comparables_ventes": calculs.comparables_ventes(type, code_commune, surface),
         "verdict": verdict,
+        "facteurs": facteurs,
+        "marge_negociation": _marge(facteurs, prix, m["mae"], prix_demande),
+        "a_verifier": calculs.attention(bien),
+        "variables_modele": modele.VARIABLES,
+        "contexte_source": "voisinage" if proche else "commune",
     }
