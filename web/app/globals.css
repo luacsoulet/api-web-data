@@ -329,3 +329,9 @@ a.bouton { display: inline-flex; align-items: center; text-decoration: none; }
 .autour-blocs { margin-top: 24px; }
 .autour-ventes { margin-top: 24px; }
 .autour-ventes td a { display: inline-block; padding: 12px 0; color: var(--ink); }
+/* bouton secondaire : contour, à côté d'une action principale */
+.bouton.secondaire { background: var(--paper); color: var(--ink); }
+.bouton.secondaire:hover { background: var(--grid); }
+.bouton.secondaire:active { background: var(--ink); color: var(--paper); }
+/* texte lu par les lecteurs d'écran seulement */
+.cache { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

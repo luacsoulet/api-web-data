@@ -144,6 +144,19 @@ export default async function PageVente({ params }: PageProps<"/vente/[id]">) {
 
       <div className="fiche-actions">
         <Link className="bouton" href={`/estimer?${estimer}`}>Estimer un bien comme celui-ci</Link>
+        {centre && (
+          <a
+            className="bouton secondaire"
+            href={`https://www.google.com/maps/search/?api=1&query=${centre[1]},${centre[0]}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Voir sur Google Maps<span className="cache"> (nouvel onglet)</span>
+            <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style={{ marginLeft: 8 }}>
+              <path d="M4.5 1.5h6v6M10.5 1.5 4 8M8 7.5v3H1.5V4h3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </a>
+        )}
       </div>
 
       <div className="fiche">
