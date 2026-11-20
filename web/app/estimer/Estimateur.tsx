@@ -282,19 +282,27 @@ export default function Estimateur({ communes, initial }: { communes: CommuneOpt
               <>
                 <h3>{r.facteurs.length} facteurs qui pèsent sur le prix</h3>
                 <table className={s.table}>
-                  <caption className={s.cache}>Impact de chaque facteur sur le prix estimé, en euros</caption>
-                  <thead><tr><th scope="col">Facteur</th><th scope="col">Valeur</th><th scope="col">Impact</th></tr></thead>
+                  <caption className={s.cache}>Impact de chaque facteur sur le prix estimé et montant à négocier, en euros</caption>
+                  <thead><tr><th scope="col">Facteur</th><th scope="col">Valeur</th><th scope="col">Impact mesuré sur les ventes</th><th scope="col">À négocier</th></tr></thead>
                   <tbody>
-                    {r.facteurs.map((f) => (
+                    {r.facteurs.map((f) => {
+                      const arg = r.marge_negociation?.arguments?.find((a) => a.facteur === f.facteur);
+                      return (
                       <tr key={f.facteur}>
                         <th scope="row">{FACTEURS[f.facteur] ?? f.facteur}</th>
                         <td>{typeof f.valeur === "boolean" ? (f.valeur ? "oui" : "non") : f.valeur == null ? "n/d" : (VALEURS[String(f.valeur)] ?? String(f.valeur))}</td>
                         <td>
                           {signe(f.impact_eur)} ({f.impact_pct > 0 ? "+" : f.impact_pct < 0 ? "−" : ""}{Math.abs(f.impact_pct * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} %){" "}
-                          {f.impact_eur > 0 ? "hausse" : f.impact_eur < 0 ? "baisse" : "neutre"}
+                          {f.impact_eur > 0 ? "hausse" : f.impact_eur < 0 ? "baisse" : "aucun effet mesuré"}
+                        </td>
+                        <td>
+                          {arg
+                            ? `−${euro(arg.montant_eur)} (${(arg.pct * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} %)${arg.source === "forfait" ? ", forfait indicatif" : ""}`
+                            : "—"}
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </>
