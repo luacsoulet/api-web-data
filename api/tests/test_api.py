@@ -164,3 +164,14 @@ def test_annee_equivaut_annee_min_max():
     a = client.get("/kpis", params={"annee": 2024}).json()["n_ventes"]
     b = client.get("/kpis", params={"annee_min": 2024, "annee_max": 2024}).json()["n_ventes"]
     assert a == b
+
+
+def test_bien_connu_et_inconnu():
+    pt = client.get("/points", params={"limit": 1}).json()[0]
+    r = client.get(f"/bien/{pt['id_mutation']}")
+    assert r.status_code == 200
+    b = r.json()
+    assert b["id_mutation"] == pt["id_mutation"]
+    assert b["nom_commune"] == pt["nom_commune"]
+    assert "prix_m2_median_commune" in b and "ecart_pct" in b
+    assert client.get("/bien/inconnu").status_code == 404

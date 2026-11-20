@@ -106,6 +106,14 @@ def points(f: Filtres, limit: Annotated[int, Query(ge=1, le=2000)] = 500):
     return calculs.points(f, limit)
 
 
+@app.get("/bien/{id_mutation}")
+def bien(id_mutation: str):
+    b = calculs.bien(id_mutation)
+    if b is None:
+        raise HTTPException(404, f"Bien {id_mutation} inconnu")
+    return b
+
+
 @app.post("/resume")
 def resume(payload: dict):
     """Couche intelligente IA generique : resume l'agregat de la vue filtree."""

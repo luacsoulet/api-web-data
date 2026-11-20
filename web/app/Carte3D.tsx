@@ -9,6 +9,8 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 
 const CENTRE: [number, number] = [1.9, 47.9]; // [lng, lat] pour MapLibre
 
+const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+
 export function Carte3D({
   points,
   type,
@@ -20,31 +22,22 @@ export function Carte3D({
   const containerRef = useRef<HTMLDivElement>(null);
   const [loaded, setLoaded] = useState(false);
 
-  const couleurBordure = type === 'Maison' ? '#22c55e' : '#3b82f6';
-
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
+    setLoaded(false);
 
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: 'https://demotiles.maplibre.org/style.json',
+      // liberty (OpenFreeMap, même fournisseur que Carte.tsx) inclut les bâtiments extrudés en 3D
+      style: 'https://tiles.openfreemap.org/styles/liberty',
       center: CENTRE,
-      zoom: 12,
-      pitch: 45, // inclinaison pour le relief 3D
+      zoom: 15,
+      pitch: 60, // inclinaison pour voir les volumes
       bearing: -17.6,
       canvasContextAttributes: { antialias: true },
     });
 
-    map.on('load', () => {
-      // Ajouter une couche de relief/extrusion si disponible dans le style
-      try {
-        // Activer le terrain si le style le supporte
-        map.setTerrain({ source: 'demotiles' });
-      } catch {
-        // terrain non disponible sur ce style, on garde la 3D par le pitch
-      }
-      setLoaded(true);
-    });
+    map.on('load', () => setLoaded(true));
 
     mapRef.current = map;
 
@@ -69,11 +62,12 @@ export function Carte3D({
             `<div style="min-width:160px; font-family: system-ui, sans-serif; font-size: 14px;">` +
               `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">` +
                 `<div style="width:10px;height:10px;border-radius:50%;background:${type === 'Maison' ? '#22c55e' : '#3b82f6'};border:2px solid white;"></div>` +
-                `<strong>${p.nom_commune}</strong>` +
+                `<strong>${esc(p.nom_commune)}</strong>` +
               `</div>` +
-              `<p style="margin:2px 0"><strong>${p.type}</strong></p>` +
+              `<p style="margin:2px 0"><strong>${esc(p.type)}</strong></p>` +
               `<p style="margin:2px 0">${p.prix_m2 != null ? p.prix_m2.toLocaleString('fr-FR') + ' €/m²' : 'n/d'}</p>` +
-              `<p style="margin:2px 0"><em>${p.date ?? 'n/d'}</em></p>` +
+              `<p style="margin:2px 0"><em>${esc(p.date ?? 'n/d')}</em></p>` +
+            `<p style="margin:6px 0 0"><a href="/bien/${encodeURIComponent(p.id_mutation)}">Voir la fiche du bien</a></p>` +
             `</div>`
           )
         )
@@ -84,19 +78,13 @@ export function Carte3D({
       map.remove();
       mapRef.current = null;
     };
-  }, [containerRef.current, points, type]);
+  }, [points, type]);
 
-  if (!loaded) {
-    return (
-      <div className="panel carte3d" style={{ height: '560px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        Chargement de la vue 3D…
-      </div>
-    );
-  }
-
+  // Le conteneur doit toujours être rendu : la carte s'y attache avant le 'load'.
   return (
     <section className="panel carte3d">
       <div ref={containerRef} className="maplibre-container" style={{ height: '560px', width: '100%' }} />
+      {!loaded && <p className="constat" role="status">Chargement de la vue 3D…</p>}
       <p className="constat">
         Vue 3D / relief — {points.length} point{points.length > 1 ? 's' : ''} affichée{points.length > 1 ? 's' : ''}.
         Inclinez et faites tourner avec clic droit + souris.

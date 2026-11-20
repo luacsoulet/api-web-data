@@ -286,6 +286,37 @@ def points(f: dict, limit: int = 500) -> list[dict]:
     ]
 
 
+def bien(id_mutation: str) -> dict | None:
+    """Une vente + médiane €/m² des ventes de même type dans la même commune ; None si inconnue."""
+    df = charger()
+    lignes = df[df["id_mutation"].astype(str) == id_mutation]
+    if lignes.empty:
+        return None
+    r = lignes.iloc[0]
+    voisines = df[(df["code_commune"] == r.code_commune) & (df["type"] == r.type)]
+    med = _nombre(voisines["prix_m2"].median())
+    prix_m2 = _nombre(r.prix_m2)
+    return {
+        "id_mutation": str(r.id_mutation),
+        "date_mutation": str(r.date_mutation.date()) if pd.notna(r.date_mutation) else None,
+        "annee": None if pd.isna(r.annee) else int(r.annee),
+        "valeur_fonciere": _nombre(r.valeur_fonciere),
+        "type": r.type,
+        "surface_reelle_bati": _nombre(r.surface_reelle_bati),
+        "nombre_pieces_principales": _nombre(r.nombre_pieces_principales),
+        "prix_m2": prix_m2,
+        "surface_terrain": _nombre(r.surface_terrain),
+        "code_commune": r.code_commune,
+        "nom_commune": r.nom_commune,
+        "code_postal": None if pd.isna(r.code_postal) else str(r.code_postal),
+        "section": None if pd.isna(r.section) else str(r.section),
+        "longitude": _nombre(r.longitude),
+        "latitude": _nombre(r.latitude),
+        "prix_m2_median_commune": med,
+        "ecart_pct": None if med is None or prix_m2 is None or med == 0 else round((prix_m2 / med - 1) * 100, 1),
+    }
+
+
 def resumer_ia(agregat: dict) -> str:
     """Appelle n'importe quelle IA compatible OpenAI pour resumer l'agregat.
     Variables d'env : IA_URL, IA_KEY, IA_MODEL."""

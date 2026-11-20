@@ -69,6 +69,25 @@ export type VenteCommune = {
   longitude: number | null;
   latitude: number | null;
 };
+export type Bien = {
+  id_mutation: string;
+  date_mutation: string | null;
+  annee: number | null;
+  valeur_fonciere: number | null;
+  type: string;
+  surface_reelle_bati: number | null;
+  nombre_pieces_principales: number | null;
+  prix_m2: number | null;
+  surface_terrain: number | null;
+  code_commune: string;
+  nom_commune: string;
+  code_postal: string | null;
+  section: string | null;
+  longitude: number | null;
+  latitude: number | null;
+  prix_m2_median_commune: number | null;
+  ecart_pct: number | null;
+};
 export type Estimation = {
   prix_estime: number;
   fourchette_basse: number;
@@ -163,4 +182,12 @@ export async function resumeIA(agregat: unknown): Promise<string> {
   });
   if (!res.ok) throw new Error(`API /resume : ${res.status}`);
   return (await res.json()).resume;
+}
+
+/** null si le bien n'existe pas (404), pour appeler notFound(). */
+export async function chargerBien(id: string) {
+  const res = await fetch(`${API_URL}/bien/${encodeURIComponent(id)}`, { next: { revalidate: 3600 } });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`API /bien/${id} : ${res.status}`);
+  return (await res.json()) as Bien;
 }

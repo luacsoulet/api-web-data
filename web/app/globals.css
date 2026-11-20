@@ -288,43 +288,6 @@ a.nom[aria-current="page"] { font-weight: 600; box-shadow: inset 0 -0.4em 0 var(
 }
 .icone-badge svg { display: block; }
 
-/* Badge type dans la fiche */
-.badge-type {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  font-family: var(--sans);
-}
-.badge-type.maison { background: #dcfce7; color: #166534; border: 1px solid #22c55e; }
-.badge-type.appartement { background: #dbeafe; color: #1e40af; border: 1px solid #3b82f6; }
-
-/* Fiche détail (drill-down) design récent */
-.fiche-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 14px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--grid);
-}
-.fiche-header h2 { margin: 0; font-size: 1.3rem; }
-.bouton-fermer {
-  margin-left: auto;
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  line-height: 1;
-  cursor: pointer;
-  color: var(--muted);
-  padding: 0 4px;
-}
-.bouton-fermer:hover { color: var(--ink); }
-
-
 /* === Vue carte : wrapper avec bouton 2D/3D === */
 .carte-wrapper {
   position: relative;
@@ -334,7 +297,3 @@ a.nom[aria-current="page"] { font-weight: 600; box-shadow: inset 0 -0.4em 0 var(
 /* Conteneur carte 3D (MapLibre) */
 .carte3d { height: 560px; border-radius: 12px; overflow: hidden; border: 1px solid var(--grid); }
 .maplibre-container { width: 100%; height: 100%; }
-
-/* Agencement 3D du bien (Three.js) */
-.agencement3d { margin-top: 16px; padding: 16px; background: var(--paper); border: 1px dashed var(--grid); }
-.agencement3d h3 { margin: 0 0 10px 0; font-size: 1rem; color: var(--ink); }

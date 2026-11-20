@@ -185,7 +185,8 @@ export default function Carte({ communes, ventes, cadrage, qs, budget, titre }: 
             <p>${echappe(p.type)} · ${ou(p.surface_reelle_bati, " m²")} · ${ou(p.nombre_pieces_principales)} pièces</p>
             <p>${ou(p.prix_m2, " €/m²")} · ${p.date_mutation ? date.format(new Date(p.date_mutation)) : "n/d"}</p>
             <p>${echappe(p.nom_commune)}${p.section ? `, section ${echappe(p.section)}` : ""}</p>
-            <p>${options ? `Avec ${options}` : "Sans jardin ni dépendance"}</p>${
+            <p>${options ? `Avec ${options}` : "Sans jardin ni dépendance"}</p>
+            <p><a href="/bien/${encodeURIComponent(p.id_mutation)}">Voir la fiche du bien</a></p>${
               budget ? `<p>Écart avec votre budget : <strong>${ecart(p.valeur_fonciere - budget)}</strong></p>` : ""}`);
         } else {
           ouvrir(e.lngLat, `<strong>${echappe(p.commune)}</strong>

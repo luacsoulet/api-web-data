@@ -68,7 +68,7 @@ export default async function Page({ searchParams }: PageProps<"/">) {
         </p>
       )}
 
-      <VuesBiens points={points} communes={communes} type={q.get("type")!} />
+      <VuesBiens points={points} type={q.get("type")!} />
 
       <Evolution q={q} vue={vue} lignes={evo} />
 
