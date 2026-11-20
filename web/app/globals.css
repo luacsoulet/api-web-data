@@ -235,3 +235,32 @@ a.nom[aria-current="page"] { font-weight: 600; box-shadow: inset 0 -0.4em 0 var(
 .tableau th:first-child, .tableau td:first-child, .tableau th:last-child, .tableau td:last-child { text-align: left; }
 .puce { display: inline-block; padding: 0 6px; margin-right: 4px; border: 1px solid var(--ink); font-size: 0.75rem; }
 .sq-titre { min-height: 3.5rem; max-width: 24ch; margin-bottom: 1rem; }
+
+/* ---- évolution du prix au m² ---- */
+.evo { margin-bottom: 24px; }
+.evo h2 { margin: 4px 0 16px; text-wrap: balance; }
+.evo-choix { display: flex; flex-wrap: wrap; gap: 8px 24px; margin-bottom: 12px; }
+.evo-choix .filtre { margin: 0; }
+.evo-defile { overflow-x: auto; }
+.evo-defile:focus-visible, .evo-chiffres summary:focus-visible { outline: 3px solid var(--parcel); outline-offset: 2px; }
+.evo-svg { display: block; width: 100%; min-width: 34rem; height: auto; }
+.evo-svg text { fill: var(--ink); font: 12px var(--mono); font-variant-numeric: tabular-nums; }
+.evo-svg .evo-etiquette { font-weight: 600; font-size: 13px; }
+.evo-chiffres { margin-top: 12px; }
+.evo-chiffres summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font: 0.85rem var(--mono); }
+.evo-chiffres caption { text-align: left; padding-bottom: 6px; }
+.evo-chiffres th[scope="row"] { text-align: left; font-weight: 600; }
+.evo-chiffres .tableau td { text-align: right; }
+
+/* survol des courbes : la tranche survolée ressort, les autres s'effacent ; étiquette du point au survol ou au focus */
+.evo-svg .evo-serie { transition: opacity 0.15s; }
+.evo-svg:has(.evo-serie:hover) .evo-serie:not(:hover) { opacity: 0.25; }
+.evo-serie:hover .evo-trace { stroke-width: 3.5; }
+.evo-point { cursor: pointer; outline: none; }
+.evo-bulle {
+  display: none; font: 600 12px var(--mono); fill: var(--ink);
+  paint-order: stroke; stroke: var(--paper); stroke-width: 5px; stroke-linejoin: round;
+}
+.evo-point:hover .evo-bulle, .evo-point:focus-visible .evo-bulle { display: block; }
+.evo-point:focus-visible circle:last-of-type { stroke-width: 4; }
+@media (prefers-reduced-motion: reduce) { .evo-svg .evo-serie { transition: none; } }

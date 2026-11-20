@@ -19,7 +19,7 @@ def contours() -> dict:
 
 
 def filtrer(f: dict) -> pd.DataFrame:
-    """f = filtres du contrat v2 (type, budget_max, annee_min, annee_max, surface_min, pieces_min, jardin, dependance)."""
+    """f = filtres du contrat v2 (type, budget_max, annee_min, annee_max, surface_min, surface_max, pieces_min, jardin, dependance)."""
     df = charger()
     m = df["annee"].between(f["annee_min"], f["annee_max"])
     if f["type"] != "Tous":
@@ -28,6 +28,8 @@ def filtrer(f: dict) -> pd.DataFrame:
         m &= df["valeur_fonciere"] <= f["budget_max"]
     if f["surface_min"] is not None:
         m &= df["surface_reelle_bati"] >= f["surface_min"]
+    if f["surface_max"] is not None:
+        m &= df["surface_reelle_bati"] <= f["surface_max"]
     if f["pieces_min"] is not None:
         m &= df["nombre_pieces_principales"] >= f["pieces_min"]
     if f["jardin"]:
@@ -94,22 +96,52 @@ def communes(f: dict, min_ventes: int, limit: int) -> list[dict]:
     ]
 
 
-def evolution(f: dict) -> list[dict]:
-    g = (
-        filtrer(f)
-        .groupby("annee")
-        .agg(n=("id_mutation", "size"), prix_m2_median=("prix_m2", "median"))
+TRANCHES = [
+    ("moins de 50 m²", 9, 50),
+    ("50 à 80 m²", 50, 80),
+    ("80 à 120 m²", 80, 120),
+    ("120 m² et plus", 120, 401),  # bornes [min, max[ ; surface max 400 incluse
+]
+
+
+def _evol(g) -> dict:
+    return {
+        "annee": int(g.annee),
+        "n": int(g.n),
+        "prix_m2_median": _nombre(g.prix_m2_median),
+    }
+
+
+def _par_annee(df: pd.DataFrame) -> pd.DataFrame:
+    return (
+        df.groupby("annee")
+        .agg(
+            n=("id_mutation", "size"),
+            prix_m2_median=("prix_m2", "median"),
+        )
         .reset_index()
         .sort_values("annee")
     )
-    return [
-        {
-            "annee": int(r.annee),
-            "n": int(r.n),
-            "prix_m2_median": _nombre(r.prix_m2_median),
-        }
-        for r in g.itertuples()
-    ]
+
+
+def evolution(f: dict) -> list[dict]:
+    return [_evol(r) for r in _par_annee(filtrer(f)).itertuples()]
+
+
+def evolution_tranches(f: dict) -> list[dict]:
+    df = filtrer(f)
+    out = []
+    smin, smax = f.get("surface_min") or 9, f.get("surface_max") or 400
+    for nom, lo, hi in TRANCHES:
+        # tranche touchée seulement par sa borne (ex. filtre jusqu'à 120 m², tranche 120+) : courbe trompeuse
+        if min(hi - 1, smax) <= max(lo, smin):
+            continue
+        s = df["surface_reelle_bati"]
+        out += [
+            {"tranche": nom, **_evol(r)}
+            for r in _par_annee(df[(s >= lo) & (s < hi)]).itertuples()
+        ]
+    return out
 
 
 def carte(f: dict) -> dict:
@@ -142,13 +174,9 @@ PROPS_VENTE = [
 ]  # fmt: skip
 
 
-def ventes(f: dict, limit: int) -> dict:
-    df = filtrer(f)
-    df = df.dropna(subset=["longitude", "latitude"])
-    total = len(df)
-    df = df.sort_values("date_mutation", ascending=False).head(limit)
+def _points(df: pd.DataFrame) -> list[dict]:
     coords = df[["longitude", "latitude"]].to_numpy().tolist()
-    features = [
+    return [
         {
             "type": "Feature",
             "geometry": {"type": "Point", "coordinates": c},
@@ -156,7 +184,13 @@ def ventes(f: dict, limit: int) -> dict:
         }
         for c, p in zip(coords, _records(df[PROPS_VENTE]))
     ]
-    return {"type": "FeatureCollection", "total": total, "features": features}
+
+
+def ventes(f: dict, limit: int) -> dict:
+    df = filtrer(f).dropna(subset=["longitude", "latitude"])
+    total = len(df)
+    df = df.sort_values("date_mutation", ascending=False).head(limit)
+    return {"type": "FeatureCollection", "total": total, "features": _points(df)}
 
 
 def commune(f: dict, code: str) -> dict | None:
@@ -204,14 +238,24 @@ def ventes_commune(f: dict, code: str, section: str | None, limit: int) -> list[
     return _records(df[COLS_VENTE_COMMUNE])
 
 
-def comparables(type_: str, code: str, surface: float) -> dict:
+def _comparables(type_: str, code: str, surface: float) -> pd.DataFrame:
     df = charger()
-    df = df[
+    return df[
         (df["code_commune"] == code)
         & (df["type"] == type_)
         & df["surface_reelle_bati"].between(surface * 0.8, surface * 1.2)
     ]
+
+
+def comparables(type_: str, code: str, surface: float) -> dict:
+    df = _comparables(type_, code, surface)
     return {"n": len(df), "prix_median": _nombre(df["valeur_fonciere"].median())}
+
+
+def comparables_ventes(type_: str, code: str, surface: float) -> dict:
+    df = _comparables(type_, code, surface).dropna(subset=["longitude", "latitude"])
+    df = df.sort_values("date_mutation", ascending=False).head(300)
+    return {"type": "FeatureCollection", "features": _points(df)}
 
 
 def terrain_median(type_: str, code: str) -> float:
