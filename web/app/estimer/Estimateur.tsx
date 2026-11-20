@@ -102,7 +102,12 @@ function InfoForfait({ libelle }: { libelle: string }) {
     <>
       <button type="button" className={s.info} popoverTarget={id} aria-label={`Pourquoi un forfait indicatif pour ${libelle} ?`}
         style={{ anchorName: ancre } as React.CSSProperties}>
-        i
+        {/* icône dessinée, centrée au pixel (une lettre « i » dépend des métriques de la police) */}
+        <svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
+          <circle cx="9" cy="9" r="8.25" fill="none" stroke="currentColor" strokeWidth="1.5" />
+          <circle cx="9" cy="5.25" r="1.1" fill="currentColor" />
+          <rect x="8.2" y="7.5" width="1.6" height="5.75" rx="0.8" fill="currentColor" />
+        </svg>
       </button>
       <span id={id} popover="auto" className={s.bulle} style={{ positionAnchor: ancre } as React.CSSProperties}>
         Forfait indicatif : les ventes passées du Loiret ne montrent pas de décote mesurable pour {libelle}. Des données
@@ -274,13 +279,13 @@ export default function Estimateur({ communes, initial }: { communes: CommuneOpt
               <div className={s.marge}>
                 <p className="label">Marge de négociation</p>
                 <p className="valeur">
-                  {Math.round(r.marge_negociation.basse_eur) === Math.round(r.marge_negociation.haute_eur) ? euro(r.marge_negociation.haute_eur) : `${euro(r.marge_negociation.basse_eur)} à ${euro(r.marge_negociation.haute_eur)}`} ({(r.marge_negociation.pct * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} %)
+                  {Math.round(r.marge_negociation.basse_eur) === Math.round(r.marge_negociation.haute_eur) ? euro(r.marge_negociation.haute_eur) : `${euro(r.marge_negociation.basse_eur)} à ${euro(r.marge_negociation.haute_eur)}`} ({(r.marge_negociation.pct * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} %)
                 </p>
                 {r.marge_negociation.arguments && r.marge_negociation.arguments.length > 0 && (
                   <ul>
                     {r.marge_negociation.arguments.map((a) => (
                       <li key={a.facteur}>
-                        {a.libelle} : −{euro(a.montant_eur)} ({(a.pct * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} %),{" "}
+                        {a.libelle} : −{euro(a.montant_eur)} ({(a.pct * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} %),{" "}
                         {a.source === "forfait" ? <>forfait indicatif <InfoForfait libelle={a.libelle} /></> : "mesuré sur les ventes"}
                       </li>
                     ))}
@@ -311,13 +316,13 @@ export default function Estimateur({ communes, initial }: { communes: CommuneOpt
                         <th scope="row">{FACTEURS[f.facteur] ?? f.facteur}</th>
                         <td>{typeof f.valeur === "boolean" ? (f.valeur ? "oui" : "non") : f.valeur == null ? "n/d" : (VALEURS[String(f.valeur)] ?? String(f.valeur))}</td>
                         <td>
-                          {signe(f.impact_eur)} ({f.impact_pct > 0 ? "+" : f.impact_pct < 0 ? "−" : ""}{Math.abs(f.impact_pct * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} %){" "}
+                          {signe(f.impact_eur)} ({f.impact_pct > 0 ? "+" : f.impact_pct < 0 ? "−" : ""}{Math.abs(f.impact_pct * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} %){" "}
                           {f.impact_eur > 0 ? "hausse" : f.impact_eur < 0 ? "baisse" : "aucun effet mesuré"}
                         </td>
                         <td>
                           {arg ? (
                             <>
-                              −{euro(arg.montant_eur)} ({(arg.pct * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} %)
+                              −{euro(arg.montant_eur)} ({(arg.pct * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} %)
                               {arg.source === "forfait" && <>, forfait indicatif <InfoForfait libelle={arg.libelle} /></>}
                             </>
                           ) : "—"}

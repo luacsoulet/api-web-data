@@ -28,7 +28,7 @@
 .bas { border-style: dashed; }
 .carte { grid-column: 1 / -1; font-variant-numeric: tabular-nums; }
 .carte h2 { margin: 0 0 0.5rem; }
-.champ select { min-height: 44px; padding: 8px 12px; font: inherit; background: var(--paper); color: var(--ink); border: 1px solid var(--ink); border-radius: 0; width: 100%; }
+.champ select { min-height: 44px; padding: 8px 32px 8px 12px; font: inherit; background-color: var(--paper); color: var(--ink); border: 1px solid var(--ink); border-radius: 0; width: 100%; }
 .form select:focus-visible { outline: 3px solid var(--parcel); outline-offset: 2px; }
 .risques { gap: 12px; }
 .marge { border: 3px solid var(--ink); padding: 12px; margin-bottom: 0.75rem; }
@@ -40,10 +40,10 @@
 .cache { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 /* « i » : pastille de 18 px dans la ligne ; la cible tactile de 44 px est un pseudo-élément, sans décaler le texte */
 .info {
-  position: relative; display: inline-grid; place-items: center; width: 18px; height: 18px; margin: 0 0 0 4px;
-  padding: 0; vertical-align: -3px; border: 1.5px solid currentColor; border-radius: 50%;
-  background: none; color: var(--ink); cursor: pointer; font: 700 11px/1 var(--mono);
+  position: relative; display: inline-block; width: 18px; height: 18px; margin: 0 0 0 4px; padding: 0;
+  vertical-align: -4px; border: 0; border-radius: 50%; background: none; color: var(--ink); cursor: pointer;
 }
+.info svg { display: block; }
 .info::after { content: ""; position: absolute; inset: -13px; }
 .info:hover, .info:focus-visible { background: var(--ink); color: var(--paper); }
 .info:focus-visible { outline: 2px solid var(--parcel); outline-offset: 2px; }
