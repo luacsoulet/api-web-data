@@ -255,7 +255,7 @@ export default function Carte({ communes, ventes, cadrage, qs, budget, titre, au
             <p>DPE ${p.dpe_classe ? echappe(p.dpe_classe) : "n/d"}${p.bat_annee_construction ? ` · construit en ${echappe(p.bat_annee_construction)}` : ""}</p>${
               risques ? `<p>${risques}</p>` : ""}${
               budget ? `<p>Écart avec votre budget : <strong>${ecart(p.valeur_fonciere - budget)}</strong></p>` : ""}
-            <p><a href="/vente/${encodeURIComponent(p.id_mutation)}">Voir la fiche et le plan cadastral</a></p>`);
+            <p><a class="bouton" href="/vente/${encodeURIComponent(p.id_mutation)}" aria-label="Voir plus : fiche complète et plan cadastral">Voir plus</a></p>`);
         } else {
           ouvrir(e.lngLat, `<strong>${echappe(p.commune)}</strong>
             <p>${ou(p.prix_m2_median, " €/m²")} médian · ${ou(p.n)} ventes${p.n < 5 ? " (trop peu pour conclure)" : ""}</p>

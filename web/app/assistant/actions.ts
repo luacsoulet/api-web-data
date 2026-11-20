@@ -6,7 +6,8 @@ export type Reponse = { texte: string; session?: string; erreur?: string };
 
 const CONSIGNE =
   "Tu es l'assistant d'Immo Orléans. Réponds en français, brièvement, en citant les chiffres des outils immo-loiret " +
-  "(ventes DVF du Loiret 2021 → juin 2026). Ne donne jamais d'adresse. Si l'outil ne permet pas de répondre, dis-le.";
+  "(ventes DVF du Loiret 2021 → juin 2026). Ne donne jamais d'adresse. Si l'outil ne permet pas de répondre, dis-le. " +
+  "Écris en texte brut, sans Markdown : pas de #, pas d'astérisques, pas de tableau ; listes avec des tirets.";
 
 // Local uniquement : lance Claude Code (login de l'utilisateur) restreint aux outils du serveur MCP du projet.
 export async function demander(question: string, session?: string): Promise<Reponse> {

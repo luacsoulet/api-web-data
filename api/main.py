@@ -214,12 +214,13 @@ def _marge(facteurs, prix, mae, prix_demande) -> dict:
 
     if neg:
         raisons = ", ".join(f"{nom(f)} ({_eur(f['impact_eur'])})" for f in neg)
-        texte = f"Jusqu'à {_eur(haute)} ({pct_fr}) de négociation justifiée par : {raisons}."
+        texte = f"Défauts à faire valoir, jusqu'à {_eur(justifiee)} : {raisons}."
     else:
-        texte = f"Aucun défaut connu ne justifie de baisse ; marge possible : {_eur(haute)} ({pct_fr})."
-    if prix_demande and prix_demande > prix:
+        texte = "Aucun défaut connu à faire valoir."
+    if prix_demande and prix_demande - prix > justifiee:
         texte += (
-            f" Le prix demandé dépasse l'estimation de {_eur(prix_demande - prix)}."
+            f" Le prix demandé dépasse l'estimation (qui tient déjà compte de ces défauts) de "
+            f"{_eur(prix_demande - prix)} : marge haute {_eur(haute)} ({pct_fr})."
         )
     nuls = [nom(f) for f in facteurs if abs(f["impact_eur"]) < 1]
     if nuls:

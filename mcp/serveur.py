@@ -232,7 +232,9 @@ def estimer_bien(
         "sensibilite_nappe": sensibilite_nappe, "bruit_db": bruit_db,
         "longitude": longitude, "latitude": latitude,
     }  # fmt: skip
-    return _api("/estimation", p)
+    r = _api("/estimation", p)
+    r.pop("comparables_ventes", None)  # GeoJSON pour la carte du site, trop gros pour un assistant
+    return r
 
 
 @mcp.tool()
