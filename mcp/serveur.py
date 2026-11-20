@@ -245,4 +245,13 @@ def colonnes_disponibles() -> list[dict]:
 
 
 if __name__ == "__main__":
-    mcp.run()
+    import sys
+
+    # stdio par défaut (une copie par session) ; « --http [port] » : un serveur partagé, local uniquement
+    if "--http" in sys.argv:
+        i = sys.argv.index("--http")
+        mcp.settings.host = "127.0.0.1"
+        mcp.settings.port = int(sys.argv[i + 1]) if len(sys.argv) > i + 1 else 8765
+        mcp.run(transport="streamable-http")
+    else:
+        mcp.run()
