@@ -94,6 +94,23 @@ const VALEURS: Record<string, string> = {
   debordement_nappe: "débordement", inondation_cave: "caves inondables", aucune: "aucune",
   frequent: "crue fréquente", extreme: "crue extrême",
 };
+// Bouton « i » + bulle native (popover) : explique pourquoi le forfait n'est qu'indicatif.
+function InfoForfait({ libelle }: { libelle: string }) {
+  const id = useId();
+  return (
+    <>
+      <button type="button" className={s.info} popoverTarget={id} aria-label={`Pourquoi un forfait indicatif pour ${libelle} ?`}>
+        i
+      </button>
+      <span id={id} popover="auto" className={s.bulle}>
+        Forfait indicatif : les ventes passées du Loiret ne montrent pas de décote mesurable pour {libelle}. Des données
+        supplémentaires sur la décote réelle (ventes après sinistre, études locales, devis de travaux) sont nécessaires
+        pour un chiffre plus précis.
+      </span>
+    </>
+  );
+}
+
 const NIVEAUX = { info: "ⓘ Info", vigilance: "⚠ Vigilance", alerte: "⛔ Alerte" } as const;
 const signe = (v: number) => `${v > 0 ? "+" : v < 0 ? "−" : ""}${euro(Math.abs(v))}`;
 
@@ -262,7 +279,7 @@ export default function Estimateur({ communes, initial }: { communes: CommuneOpt
                     {r.marge_negociation.arguments.map((a) => (
                       <li key={a.facteur}>
                         {a.libelle} : −{euro(a.montant_eur)} ({(a.pct * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} %),{" "}
-                        {a.source === "forfait" ? "forfait indicatif" : "mesuré sur les ventes"}
+                        {a.source === "forfait" ? <>forfait indicatif <InfoForfait libelle={a.libelle} /></> : "mesuré sur les ventes"}
                       </li>
                     ))}
                   </ul>
@@ -296,9 +313,12 @@ export default function Estimateur({ communes, initial }: { communes: CommuneOpt
                           {f.impact_eur > 0 ? "hausse" : f.impact_eur < 0 ? "baisse" : "aucun effet mesuré"}
                         </td>
                         <td>
-                          {arg
-                            ? `−${euro(arg.montant_eur)} (${(arg.pct * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} %)${arg.source === "forfait" ? ", forfait indicatif" : ""}`
-                            : "—"}
+                          {arg ? (
+                            <>
+                              −{euro(arg.montant_eur)} ({(arg.pct * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} %)
+                              {arg.source === "forfait" && <>, forfait indicatif <InfoForfait libelle={arg.libelle} /></>}
+                            </>
+                          ) : "—"}
                         </td>
                       </tr>
                       );
