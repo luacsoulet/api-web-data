@@ -1,0 +1,6 @@
+# Publie le front sur l'hôte, hors Dokploy :
+# docker compose -f docker-compose.yml -f docker-compose.ports.yml up -d --build
+services:
+  web:
+    ports:
+      - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-3000}:3000"
