@@ -1,0 +1,28 @@
+.grille { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); gap: 24px; align-items: start; margin-top: 1.5rem; }
+.form { display: grid; gap: 16px; }
+.champ { position: relative; display: grid; gap: 4px; border: 0; padding: 0; margin: 0; min-width: 0; }
+.champ label, .champ legend { font-size: 0.85rem; font-weight: 600; padding: 0; }
+.champ input:not([type="radio"], [type="checkbox"]) {
+  min-height: 44px; padding: 8px 12px; font: inherit; font-variant-numeric: tabular-nums;
+  background: var(--paper); color: var(--ink); border: 1px solid var(--ink); border-radius: 0; width: 100%;
+}
+.form input:focus-visible { outline: 3px solid var(--parcel); outline-offset: 2px; }
+.deux { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.choix { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.choix label { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-weight: 400; font-size: 1rem; cursor: pointer; }
+.choix input { width: 20px; height: 20px; accent-color: var(--ink); }
+.liste {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 5; margin: 0; padding: 0; list-style: none;
+  background: var(--paper); border: 1px solid var(--ink); max-height: 16rem; overflow-y: auto;
+}
+.liste li { min-height: 44px; display: flex; align-items: center; padding: 0 12px; cursor: pointer; }
+.liste li[aria-selected="true"] { background: var(--ink); color: var(--paper); }
+.vide { color: var(--muted); cursor: default !important; }
+.aide { font-size: 0.85rem; color: var(--muted); margin: 0; }
+.resultat { min-height: 12rem; font-variant-numeric: tabular-nums; }
+.resultat p { margin: 0 0 0.75rem; }
+.erreur { border: 2px solid var(--ink); padding: 12px; font-weight: 600; }
+.verdict { border: 2px solid var(--ink); padding: 12px; font-weight: 600; }
+.haut { border-style: solid; }
+.milieu { border-style: double; border-width: 4px; }
+.bas { border-style: dashed; }

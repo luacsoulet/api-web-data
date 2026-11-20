@@ -1,18 +1,20 @@
 # Immo Orléans
 
-URL : à compléter après déploiement : front Vercel · API : à compléter (URL Render)
+URL : https://parcelle.pixelmorph.tech (VPS, Dokploy) · API : interne au compose, non exposée
 
-Pour : un couple qui cherche à acheter dans le Loiret, qui doit décider dans quelle commune chercher, pour quel budget
+Pour : un couple, une famille ou des colocataires qui cherche à acheter dans le Loiret, qui doit décider dans quelle commune chercher, pour quel budget
 
 Données : DGFiP, DVF géolocalisées (Etalab), Loiret, ventes d'un logement 2021-2025 (46 022 ventes, 325 communes), Licence Ouverte 2.0
 
 Framework : FastAPI sépare les calculs (pandas, cache) de l'affichage et sert une API réutilisable (bonus back-end séparé). Next.js rend la page côté serveur avec les données préchargées, donc elle s'affiche complète dès la première visite, y compris sur téléphone.
 
-Couche ML ou LLM : à venir au sprint 3
+Couche ML : estimateur de prix (page /estimer), HistGradientBoosting sur log(prix) avec commune en TargetEncoder ; erreur sur 9 205 ventes de test : MAE ± 41 881 €, MAPE 28,5 %. Limite : DVF ignore l'état du bien, l'étage, le DPE et la piscine ; la fourchette est large.
 
 Assistant de code : Claude Code, pour le squelette de l'API, du front et ce README
 
-Depuis la version intermédiaire : à venir
+Retours pris en compte : <à compléter avec le retour reçu à la version intermédiaire>
+
+Depuis la version intermédiaire : filtres budget, période, surface, jardin, garage appliqués partout ; carte MapLibre 2D (fond OpenFreeMap) avec communes colorées et ventes de la recherche en points ; drill-down commune → section → ventes ; estimateur ML ; thème clair par défaut avec bouton sombre ; déploiement Docker sur VPS.
 
 ## Lancer en local
 
@@ -37,20 +39,39 @@ cd api && uv run pytest -q
 cd api && uv run ruff check . && uv run ruff format --check .
 ```
 
+Tests : `cd api && uv run pytest -q` (12 tests). Modèle : `cd api && uv run python modele.py` (environ 10 s ; fait automatiquement au build Docker).
+
 ## Données
 
 `api/data/immobilier.parquet` est versionné. Pour le reconstruire depuis DVF (data.gouv.fr) : `cd api && uv run python prepare.py`. Filtres : ventes d'un seul logement, 10 k€-2 M€, 9-400 m², 300-8 000 €/m².
+
+`api/data/communes.geojson` : contours des 325 communes (GéoLoiret, Licence Ouverte 2.0). Colonnes ajoutées par prepare.py : avec_dependance, avec_jardin, avec_eau (lues sur les autres lignes de la vente).
 
 ## Routes de l'API
 
 Paramètre commun `type` : `Maison` | `Appartement` | `Tous` (défaut `Maison`). Toutes les médianes, jamais des moyennes.
 
-| Route | Réponse JSON |
+| Paramètre | Type | Défaut | Bornes |
+|---|---|---|---|
+| `type` | `Maison` \| `Appartement` \| `Tous` | `Maison` | |
+| `budget_max` | int \| absent | absent | 10 000 - 2 000 000 |
+| `annee_min`, `annee_max` | int | 2021, 2025 | 2021 - 2025, `annee_min <= annee_max` sinon 422 |
+| `surface_min` | int \| absent | absent | 9 - 400 |
+| `pieces_min` | int \| absent | absent | 1 - 10 |
+| `jardin`, `dependance` | bool | false | true = seulement les ventes avec cette option |
+
+| Route | Réponse |
 |---|---|
 | `GET /health` | `{"ok": true}` |
-| `GET /kpis?type=` | `{"n_ventes": int, "prix_m2_median": float, "valeur_median": float, "n_communes": int}` |
-| `GET /communes?type=&min_ventes=30&limit=15` | `[{"code_commune": str, "nom_commune": str, "n": int, "prix_m2_median": float, "valeur_median": float}]`, triée par `prix_m2_median` décroissant, communes avec `n >= min_ventes` seulement |
-| `GET /evolution?type=` | `[{"annee": int, "n": int, "prix_m2_median": float}]`, triée par année |
+| `GET /kpis?<filtres>` | `{"n_ventes", "prix_m2_median", "valeur_median", "n_communes"}` |
+| `GET /communes?<filtres>&min_ventes=30&limit=15` | `[{"code_commune", "nom_commune", "n", "prix_m2_median", "valeur_median"}]`, prix décroissant |
+| `GET /evolution?<filtres>` | `[{"annee", "n", "prix_m2_median"}]` |
+| `GET /carte?<filtres>` | GeoJSON FeatureCollection des 325 communes ; `properties`: `code_insee`, `commune`, `n` (0 possible), `prix_m2_median` (null si n=0), `valeur_median` (null si n=0). Géométrie inchangée. |
+| `GET /ventes?<filtres>&limit=3000` | GeoJSON FeatureCollection de points (ventes avec coordonnées) correspondant aux filtres, plus récentes d'abord, `limit` 1-5000 ; `properties`: `id_mutation`, `date_mutation`, `type`, `valeur_fonciere`, `surface_reelle_bati`, `nombre_pieces_principales`, `prix_m2`, `nom_commune`, `section`, `avec_jardin`, `avec_dependance` ; en-tête de réponse ou champ `total` : nombre total de ventes filtrées (avant limit) |
+| `GET /communes/{code}?<filtres>` | `{"code_commune", "nom_commune", "n", "prix_m2_median", "valeur_median"}` ; 404 si code inconnu |
+| `GET /communes/{code}/sections?<filtres>` | `[{"section", "n", "prix_m2_median", "valeur_median"}]`, prix décroissant |
+| `GET /communes/{code}/ventes?<filtres>&section=&limit=200` | `[{"id_mutation", "date_mutation" (YYYY-MM-DD), "type", "valeur_fonciere", "surface_reelle_bati", "nombre_pieces_principales", "prix_m2", "surface_terrain", "section", "avec_dependance", "avec_jardin", "avec_eau", "longitude", "latitude"}]`, plus récentes d'abord ; `limit` 1-1000 ; lon/lat null possibles |
+| `GET /estimation?type=Maison\|Appartement&code_commune=&surface=&pieces=&jardin=&dependance=&prix_demande=` | `{"prix_estime", "fourchette_basse", "fourchette_haute", "mae", "mape", "n_entrainement", "n_test", "comparables": {"n", "prix_median"}, "verdict": "au-dessus" \| "dans la fourchette" \| "au-dessous" \| null}` ; `verdict` null sans `prix_demande` ; 404 commune inconnue |
 
 `prix_m2_median` et `valeur_median` sont `float | null` : un NaN pandas devient `null`. Le front affiche « n/d ».
 `type` invalide → 422. `min_ventes` borné 1-1000, `limit` borné 1-325.
@@ -71,26 +92,6 @@ docker compose ps                                                               
 ```
 
 `WEB_PORT=8080` change le port. Le port écoute sur `127.0.0.1` : mettre un reverse proxy (Caddy, Nginx) devant pour l'ouvrir au public. `WEB_BIND=0.0.0.0` l'ouvre directement, en contournant ufw.
-
-## Déployer (Render + Vercel)
-
-1. Pousser le dépôt sur GitHub :
-
-   ```bash
-   git remote add origin <url-du-dépôt>
-   git push -u origin main
-   ```
-
-   Le fichier `api/data/immobilier.parquet` est versionné : il part avec le dépôt.
-
-2. Render : « New Web Service », racine `api`, plan Free.
-   - Build command : `pip install uv && uv sync --frozen`
-   - Start command : `uv run uvicorn main:app --host 0.0.0.0 --port $PORT`
-   - Noter l'URL du service.
-
-3. Vercel : importer le dépôt, racine `web`, variable d'environnement `API_URL` = URL Render, puis déployer.
-
-4. Avant la démo, ouvrir `/health` de l'API pour la réveiller : le plan gratuit se met en veille, le réveil prend environ 50 s.
 
 ## Choix de design
 

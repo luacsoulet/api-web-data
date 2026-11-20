@@ -19,6 +19,7 @@ COLONNES = [
     "id_mutation", "date_mutation", "annee", "valeur_fonciere", "type", "surface_reelle_bati",
     "nombre_pieces_principales", "prix_m2", "surface_terrain", "code_commune", "nom_commune",
     "code_postal", "section", "longitude", "latitude",
+    "avec_dependance", "avec_jardin", "avec_eau",
 ]  # fmt: skip
 
 raw = pd.concat(pd.read_csv(URL.format(year=y), dtype=str) for y in range(2021, 2026))
@@ -36,6 +37,20 @@ terrain = (
     .sum()
 )
 
+
+# Options d'une vente, lues sur ses autres lignes (DVF ne dit rien de la piscine ni du type des pièces).
+def options(masque):
+    return set(ventes.loc[masque, "id_mutation"])
+
+
+culture = ventes["nature_culture"].fillna("")
+speciale = ventes["nature_culture_speciale"].fillna("")
+avec_dependance = options(ventes["type_local"] == "Dépendance")  # garage, cave, parking
+avec_jardin = options(
+    culture.isin(["jardins", "terrains d'agrément"]) | speciale.str.contains("Jardin")
+)
+avec_eau = options((culture == "eaux") | speciale.isin(["Etangs", "Mare"]))
+
 df = ventes[ventes["type_local"].isin(["Appartement", "Maison"])]
 df = df.drop_duplicates(
     ["id_mutation", "type_local", "surface_reelle_bati", "nombre_pieces_principales"]
@@ -43,6 +58,9 @@ df = df.drop_duplicates(
 # Plusieurs logements dans une vente = un seul prix pour tous : on garde les ventes d'un seul logement.
 df = df[~df["id_mutation"].duplicated(keep=False)].copy()
 df["surface_terrain"] = df["id_mutation"].map(terrain)
+df["avec_dependance"] = df["id_mutation"].isin(avec_dependance)
+df["avec_jardin"] = df["id_mutation"].isin(avec_jardin)
+df["avec_eau"] = df["id_mutation"].isin(avec_eau)
 
 # Erreurs évidentes : prix symboliques, surfaces et prix au m² absurdes.
 df["prix_m2"] = df["valeur_fonciere"] / df["surface_reelle_bati"]
