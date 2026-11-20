@@ -15,10 +15,37 @@ def test_kpis_maison():
     assert r.json()["n_ventes"] > 0
 
 
+def test_kpis_annee():
+    r = client.get("/kpis", params={"type": "Maison", "annee": 2024})
+    assert r.status_code == 200
+    assert r.json()["n_ventes"] >= 0
+
+
+def test_kpis_budget_max():
+    r = client.get("/kpis", params={"type": "Maison", "budget_max": 250000})
+    assert r.status_code == 200
+    assert r.json()["n_ventes"] >= 0
+
+
+def test_kpis_annee_et_budget():
+    r = client.get(
+        "/kpis", params={"type": "Maison", "annee": 2024, "budget_max": 300000}
+    )
+    assert r.status_code == 200
+    assert r.json()["n_ventes"] >= 0
+
+
 def test_communes_triees_et_min_ventes():
     lignes = client.get("/communes", params={"min_ventes": 30}).json()
     prix = [c["prix_m2_median"] for c in lignes]
     assert prix == sorted(prix, reverse=True)
+    assert all(c["n"] >= 30 for c in lignes)
+
+
+def test_communes_annee():
+    lignes = client.get(
+        "/communes", params={"annee": 2024, "min_ventes": 30}
+    ).json()
     assert all(c["n"] >= 30 for c in lignes)
 
 

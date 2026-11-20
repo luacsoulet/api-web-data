@@ -1,4 +1,4 @@
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Optional
 
 from fastapi import Depends, FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,12 +9,17 @@ app = FastAPI(title="Immo Orléans")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET"])
 
 
-def filtre_type(type: Literal["Maison", "Appartement", "Tous"] = "Maison") -> str:
-    # dépendance partagée : on y ajoutera annee, budget_max au sprint 2
-    return type
+def filtre_commun(
+    type: Literal["Maison", "Appartement", "Tous"] = "Maison",
+    annee: Optional[int] = Query(default=None, ge=2021, le=2025),
+    budget_max: Optional[int] = Query(default=None, ge=0),
+) -> dict:
+    """Dépendance partagée : filtres type / annee / budget_max.
+    On ajoutera d'autres filtres ici sans casser le contrat des routes."""
+    return {"type": type, "annee": annee, "budget_max": budget_max}
 
 
-Type = Annotated[str, Depends(filtre_type)]
+Filtres = Annotated[dict, Depends(filtre_commun)]
 
 
 @app.get("/health")
@@ -23,19 +28,19 @@ def health():
 
 
 @app.get("/kpis")
-def kpis(type: Type):
-    return calculs.kpis(type)
+def kpis(f: Filtres):
+    return calculs.kpis(f["type"], f["annee"], f["budget_max"])
 
 
 @app.get("/communes")
 def communes(
-    type: Type,
+    f: Filtres,
     min_ventes: Annotated[int, Query(ge=1, le=1000)] = 30,
     limit: Annotated[int, Query(ge=1, le=325)] = 15,
 ):
-    return calculs.communes(type, min_ventes, limit)
+    return calculs.communes(f["type"], f["annee"], f["budget_max"], min_ventes, limit)
 
 
 @app.get("/evolution")
-def evolution(type: Type):
-    return calculs.evolution(type)
+def evolution(f: Filtres):
+    return calculs.evolution(f["type"], f["annee"], f["budget_max"])
