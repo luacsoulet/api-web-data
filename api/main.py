@@ -56,5 +56,5 @@ def points(
 
 @app.post("/resume")
 def resume(payload: dict):
-    """Couche intelligente Nemotron : resume l'agregat de la vue filtree."""
-    return {"resume": calculs.resumer_nemotron(payload)}
+    """Couche intelligente IA generique : resume l'agregat de la vue filtree."""
+    return {"resume": calculs.resumer_ia(payload)}

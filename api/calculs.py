@@ -126,14 +126,15 @@ def points(
     ]
 
 
-def resumer_nemotron(agregat: dict) -> str:
-    """Appelle Nemotron pour resumer l'agregat de la vue filtree en 3 phrases."""
-    url = os.environ.get("NEMOTRON_URL")
-    key = os.environ.get("NEMOTRON_KEY")
-    model = os.environ.get("NEMOTRON_MODEL", "nemotron")
+def resumer_ia(agregat: dict) -> str:
+    """Appelle n'importe quelle IA compatible OpenAI pour resumer l'agregat.
+    Variables d'env : IA_URL, IA_KEY, IA_MODEL."""
+    url = os.environ.get("IA_URL")
+    key = os.environ.get("IA_KEY")
+    model = os.environ.get("IA_MODEL", "ia")
     if not url or not key:
         return (
-            "Couche Nemotron non configuree : definissez NEMOTRON_URL et NEMOTRON_KEY."
+            "Couche IA non configuree : definissez IA_URL et IA_KEY."
         )
     consigne = (
         "Resume ce tableau en 3 phrases, en francais, sans inventer de chiffre. "
@@ -162,5 +163,5 @@ def resumer_nemotron(agregat: dict) -> str:
         with urllib.request.urlopen(req, timeout=20) as resp:
             body = json.loads(resp.read().decode("utf-8"))
         return body["choices"][0]["message"]["content"].strip()
-    except Exception as exc:  # aucune fuite de clé dans l'erreur retournee
-        return f"Erreur Nemotron : {type(exc).__name__}"
+    except Exception as exc:
+        return f"Erreur IA : {type(exc).__name__}"

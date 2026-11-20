@@ -6,8 +6,9 @@ import { useState } from "react";
 
 import type { Point } from "@/lib/api";
 import type { Commune } from "@/lib/api";
+import { IconeTypeBien } from "./icone";
 
-const CENTRE = [47.9, 1.9]; // Orléans
+const CENTRE: [number, number] = [47.9, 1.9];
 
 function fmtFr(v: number | null): string {
   if (v == null) return "n/d";
@@ -22,9 +23,11 @@ function medianeCommune(communes: Commune[], nom: string): number | null {
 export function Carte({
   points,
   communes,
+  type,
 }: {
   points: Point[];
   communes: Commune[];
+  type: string;
 }) {
   const [selected, setSelected] = useState<Point | null>(null);
 
@@ -40,29 +43,51 @@ export function Carte({
     } else if (med != null) {
       comparo = `prix m² non disponible (médiane ${selected.nom_commune} : ${fmtFr(med)} €/m²)`;
     }
+
+    const couleurBordure = selected.type === "Maison" ? "#22c55e" : "#3b82f6";
+
     return (
       <section className="panel fiche" aria-labelledby="titre-fiche">
-        <h2 id="titre-fiche">Détail du bien</h2>
-        <p>Commune : {selected.nom_commune}</p>
-        <p>Type : {selected.type}</p>
+        <div className="fiche-header">
+          <IconeTypeBien type={selected.type as any} />
+          <h2 id="titre-fiche">Détail du bien</h2>
+          <button
+            className="bouton-fermer"
+            onClick={() => setSelected(null)}
+            aria-label="Fermer la fiche"
+          >
+            ✕
+          </button>
+        </div>
         <p>
-          Prix :{" "}
+          <strong>Commune :</strong> {selected.nom_commune}
+        </p>
+        <p>
+          <strong>Type :</strong>{" "}
+          <span className={`badge-type ${selected.type === "Maison" ? "maison" : "appartement"}`}>
+            {selected.type}
+          </span>
+        </p>
+        <p>
+          <strong>Prix :</strong>{" "}
           {selected.prix != null ? fmtFr(selected.prix) + " €" : "n/d"}
         </p>
         <p>
-          Surface :{" "}
+          <strong>Surface :</strong>{" "}
           {selected.surface != null ? fmtFr(selected.surface) + " m²" : "n/d"}
         </p>
         <p>
-          Prix/m² :{" "}
+          <strong>Prix/m² :</strong>{" "}
           {selected.prix_m2 != null ? fmtFr(selected.prix_m2) + " €/m²" : "n/d"}
         </p>
         <p>
-          Pièces : {selected.nombre_pieces != null ? fmtFr(selected.nombre_pieces) : "n/d"}
+          <strong>Pièces :</strong>{" "}
+          {selected.nombre_pieces != null ? fmtFr(selected.nombre_pieces) : "n/d"}
         </p>
-        <p>Date : {selected.date ?? "n/d"}</p>
-        <p className="constat">{comparo}</p>
-        <button onClick={() => setSelected(null)}>Fermer la fiche</button>
+        <p><strong>Date :</strong> {selected.date ?? "n/d"}</p>
+        <p className="constat" style={{ borderLeft: `4px solid ${couleurBordure}` }}>
+          {comparo}
+        </p>
       </section>
     );
   }
@@ -83,11 +108,25 @@ export function Carte({
           <Marker
             key={p.id_mutation}
             position={[p.latitude, p.longitude]}
-            onClick={() => setSelected(p)}
+            eventHandlers={{
+              click: () => setSelected(p),
+            }}
           >
             <Popup>
-              {p.nom_commune} · {p.type} ·{" "}
-              {p.prix_m2 != null ? fmtFr(p.prix_m2) + " €/m²" : "n/d"}
+              <div style={{ minWidth: "200px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+                  <IconeTypeBien type={p.type as any} />
+                  <strong style={{ fontSize: "1.1em" }}>{p.nom_commune}</strong>
+                </div>
+                <p style={{ margin: "2px 0" }}><strong>{p.type}</strong></p>
+                <p style={{ margin: "2px 0" }}>
+                  {p.prix_m2 != null ? fmtFr(p.prix_m2) + " €/m²" : "n/d"}
+                </p>
+                <p style={{ margin: "2px 0" }}><em>{p.date ?? "n/d"}</em></p>
+                <p style={{ fontSize: "0.85em", color: "#666" }}>
+                  Cliquez pour voir la fiche détaillée
+                </p>
+              </div>
             </Popup>
           </Marker>
         ))}

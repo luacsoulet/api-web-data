@@ -10,11 +10,11 @@ Données : DGFiP, DVF géolocalisées (Etalab), Loiret, ventes d'un logement 202
 
 Framework : FastAPI sépare les calculs (pandas, cache) de l'affichage et sert une API réutilisable (bonus back-end séparé). Next.js rend la page côté serveur avec les données préchargées, donc elle s'affiche complète dès la première visite, y compris sur téléphone.
 
-Couche ML ou LLM : Nemotron, résumé de l'agrégat de la vue filtrée en 3 phrases (route POST /resume, clés NEMOTRON_URL / NEMOTRON_KEY / NEMOTRON_KEY).
+Couche ML ou LLM : IA générique compatible OpenAI, résumé de l'agrégat de la vue filtrée en 3 phrases (route POST /resume, clés IA_URL / IA_KEY / IA_MODEL).
 
 Assistant de code : Claude Code, pour le squelette de l'API, du front et ce README
 
-Depuis la version intermédiaire : carte Leaflet interactive (type maps) avec marqueurs géolocalisés, filtres année et budget_max, drill-down fiche détaillée au clic, résumé Nemotron.
+Depuis la version intermédiaire : carte Leaflet interactive (type maps) avec marqueurs géolocalisés, filtres année et budget_max, drill-down fiche détaillée au clic, icônes par type de bien, résumé IA générique.
 
 ## Lancer en local
 
@@ -54,7 +54,7 @@ Paramètre commun `type` : `Maison` | `Appartement` | `Tous` (défaut `Maison`).
 | `GET /communes?type=&min_ventes=30&limit=15` | `[{"code_commune": str, "nom_commune": str, "n": int, "prix_m2_median": float, "valeur_median": float}]`, triée par `prix_m2_median` décroissant, communes avec `n >= min_ventes` seulement |
 | `GET /evolution?type=` | `[{"annee": int, "n": int, "prix_m2_median": float}]`, triée par année |
 | `GET /points?type=&limit=` | `[{id_mutation, nom_commune, type, prix, surface, prix_m2, nombre_pieces, date, latitude, longitude}]`, ventes géolocalisées pour les marqueurs de la carte (max 2000, défaut 500) |
-| `POST /resume` | `{resume: str}` : résumé Nemotron de l'agrégat `{kpis, communes}` (3 phrases FR, sans inventer de chiffre) |
+| `POST /resume` | `{resume: str}` : résumé IA générique de l'agrégat `{kpis, communes}` (3 phrases FR, sans inventer de chiffre) |
 
 `prix_m2_median` et `valeur_median` sont `float | null` : un NaN pandas devient `null`. Le front affiche « n/d ».
 `type` invalide → 422. `min_ventes` borné 1-1000, `limit` borné 1-325.

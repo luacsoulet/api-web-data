@@ -130,3 +130,111 @@ input:focus-visible, select:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .barre { animation: none; }
 }
+
+/* === Design récent : filtres boutons côte à côte === */
+.filtres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin: 1.5rem 0;
+  padding: 16px;
+  background: oklch(0.97 0.01 240);
+  border: 1px solid var(--grid);
+  border-radius: 12px;
+}
+.filtres label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 0;
+}
+.filtres select, .filtres input {
+  font-size: 1rem;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--ink);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+}
+.filtres .bouton {
+  min-height: 44px;
+  padding: 0 24px;
+  border: 1px solid var(--ink);
+  border-radius: 8px;
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.filtres .bouton:hover { background: var(--parcel); }
+.filtres .bouton:active { background: var(--paper); color: var(--ink); }
+
+/* Icônes dans les options de select et badges */
+.icone-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 6px;
+}
+.icone-badge svg { display: block; }
+
+/* Badge type dans la fiche */
+.badge-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: var(--sans);
+}
+.badge-type.maison { background: #dcfce7; color: #166534; border: 1px solid #22c55e; }
+.badge-type.appartement { background: #dbeafe; color: #1e40af; border: 1px solid #3b82f6; }
+
+/* Fiche détail (drill-down) design récent */
+.fiche-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--grid);
+}
+.fiche-header h2 { margin: 0; font-size: 1.3rem; }
+.bouton-fermer {
+  margin-left: auto;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--muted);
+  padding: 0 4px;
+}
+.bouton-fermer:hover { color: var(--ink); }
+
+/* Panels modernes */
+.panel {
+  background: var(--paper);
+  border: 1px solid var(--grid);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px oklch(0 0 0 / 0.08);
+}
+.panel.surligne { border-color: var(--ink); }
+
+/* Carte */
+.carte { height: 560px; }
+.carte .leaflet-container { border-radius: 12px; border: 1px solid var(--grid); }
+
+/* Responsive : filtres en colonne sur mobile */
+@media (max-width: 640px) {
+  .filtres { flex-direction: column; align-items: stretch; }
+  .filtres .bouton { width: 100%; }
+}

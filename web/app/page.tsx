@@ -7,6 +7,7 @@ import {
   type Commune,
 } from "@/lib/api";
 import { Carte } from "./carte";
+import { IconeTypeBien } from "./icone";
 
 const nombre = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 });
 const fmt = (v: number | null, unite: string) =>
@@ -18,30 +19,16 @@ function toNumber(v: string | string[] | undefined): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-async function resumerNemotron(kpis: Kpis, communes: Commune[]): Promise<string | null> {
-  const apiUrl = process.env.API_URL ?? "http://127.0.0.1:8000";
-  try {
-    const r = await fetch(`${apiUrl}/resume`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kpis, communes }),
-    });
-    if (!r.ok) return null;
-    const data = await r.json();
-    return data.resume ?? null;
-  } catch {
-    return null;
-  }
-}
-
-export default async function Page({ searchParams }: PageProps<"/">) {
-  const type: TypeBien = TYPES.find((t) => t === searchParams.type) ?? "Maison";
-  const annee = toNumber(searchParams.annee);
-  const budget_max = toNumber(searchParams.budget_max);
+export default async function Page({
+  searchParams,
+}: PageProps<"/">) {
+  const params = await searchParams;
+  const type: TypeBien = TYPES.find((t) => t === params.type) ?? "Maison";
+  const annee = toNumber(params.annee);
+  const budget_max = toNumber(params.budget_max);
 
   const [kpis, communes] = await chargerDonnees(type, annee, budget_max);
   const points = await chargerPoints(type, annee, budget_max);
-  const resume = await resumerNemotron(kpis, communes);
 
   const max = Math.max(...communes.map((c) => c.prix_m2_median ?? 0), 1);
   const top = communes[0];
@@ -59,14 +46,16 @@ export default async function Page({ searchParams }: PageProps<"/">) {
       <p className="source">
         DGFiP, DVF géolocalisées (Etalab) · Loiret · 2021-2025 · Licence Ouverte 2.0
       </p>
-      <h1>Où chercher un logement autour d&apos;Orléans, et pour quel budget ?</h1>
+      <h1>Où acheter autour d&apos;Orléans, et pour quel budget ?</h1>
 
       <form method="get" className="filtres" aria-label="Filtres">
         <label>
           Type de bien
           <select name="type" defaultValue={type}>
             {TYPES.map((t) => (
-              <option key={t} value={t}>{t}</option>
+              <option key={t} value={t}>
+                <IconeTypeBien type={t} /> {t}
+              </option>
             ))}
           </select>
         </label>
@@ -83,7 +72,9 @@ export default async function Page({ searchParams }: PageProps<"/">) {
           Budget max (€)
           <input type="number" name="budget_max" defaultValue={budget_max ?? ""} min="0" />
         </label>
-        <button type="submit">Appliquer</button>
+        <button type="submit" className="bouton">
+          Appliquer
+        </button>
       </form>
 
       <section className="kpis" aria-label="Indicateurs">
@@ -104,17 +95,7 @@ export default async function Page({ searchParams }: PageProps<"/">) {
         </div>
       </section>
 
-      {resume && (
-        <section className="panel resume" aria-labelledby="titre-resume">
-          <h2 id="titre-resume">Résumé Nemotron</h2>
-          <p>{resume}</p>
-          <p className="source">
-            Texte généré par Nemotron à partir du tableau ci-dessus.
-          </p>
-        </section>
-      )}
-
-      <Carte points={points} communes={communes} />
+      <Carte points={points} communes={communes} type={type} />
 
       <section className="panel graphique" aria-labelledby="titre-graphique">
         <h2 id="titre-graphique">{titre}</h2>

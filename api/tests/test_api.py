@@ -76,4 +76,4 @@ def test_resume_sans_cle():
     r = client.post("/resume", json={"kpis": {}, "communes": []})
     assert r.status_code == 200
     assert "resume" in r.json()
-    assert "Nemotron" in r.json()["resume"]
+    assert "IA non configuree" in r.json()["resume"]
