@@ -97,12 +97,14 @@ const VALEURS: Record<string, string> = {
 // Bouton « i » + bulle native (popover) : explique pourquoi le forfait n'est qu'indicatif.
 function InfoForfait({ libelle }: { libelle: string }) {
   const id = useId();
+  const ancre = `--i${id.replace(/[^\w-]/g, "")}`; // la bulle s'accroche sous son bouton (anchor positioning)
   return (
     <>
-      <button type="button" className={s.info} popoverTarget={id} aria-label={`Pourquoi un forfait indicatif pour ${libelle} ?`}>
+      <button type="button" className={s.info} popoverTarget={id} aria-label={`Pourquoi un forfait indicatif pour ${libelle} ?`}
+        style={{ anchorName: ancre } as React.CSSProperties}>
         i
       </button>
-      <span id={id} popover="auto" className={s.bulle}>
+      <span id={id} popover="auto" className={s.bulle} style={{ positionAnchor: ancre } as React.CSSProperties}>
         Forfait indicatif : les ventes passées du Loiret ne montrent pas de décote mesurable pour {libelle}. Des données
         supplémentaires sur la décote réelle (ventes après sinistre, études locales, devis de travaux) sont nécessaires
         pour un chiffre plus précis.
@@ -272,7 +274,7 @@ export default function Estimateur({ communes, initial }: { communes: CommuneOpt
               <div className={s.marge}>
                 <p className="label">Marge de négociation</p>
                 <p className="valeur">
-                  {euro(r.marge_negociation.basse_eur)} à {euro(r.marge_negociation.haute_eur)} ({(r.marge_negociation.pct * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} %)
+                  {Math.round(r.marge_negociation.basse_eur) === Math.round(r.marge_negociation.haute_eur) ? euro(r.marge_negociation.haute_eur) : `${euro(r.marge_negociation.basse_eur)} à ${euro(r.marge_negociation.haute_eur)}`} ({(r.marge_negociation.pct * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} %)
                 </p>
                 {r.marge_negociation.arguments && r.marge_negociation.arguments.length > 0 && (
                   <ul>

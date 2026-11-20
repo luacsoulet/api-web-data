@@ -38,19 +38,20 @@
 .verifier { margin: 0 0 0.75rem; padding-left: 1.25rem; }
 .verifier li { margin-bottom: 0.5rem; }
 .cache { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-/* « i » rond, cible tactile 44 px autour d'une pastille de 22 px */
+/* « i » : pastille de 18 px dans la ligne ; la cible tactile de 44 px est un pseudo-élément, sans décaler le texte */
 .info {
-  display: inline-grid; place-items: center; width: 44px; height: 44px; margin: -11px -8px; padding: 0;
-  border: 0; background: none; color: var(--ink); cursor: pointer; vertical-align: middle;
-  font: italic 700 0.85rem/1 Georgia, serif;
+  position: relative; display: inline-grid; place-items: center; width: 18px; height: 18px; margin: 0 0 0 4px;
+  padding: 0; vertical-align: -3px; border: 1.5px solid currentColor; border-radius: 50%;
+  background: none; color: var(--ink); cursor: pointer; font: 700 11px/1 var(--mono);
 }
-.info::before {
-  content: ""; grid-area: 1 / 1; width: 22px; height: 22px; border: 1.5px solid currentColor; border-radius: 50%;
-}
-.info:hover::before { background: var(--grid); }
-.info:focus-visible { outline: 2px solid var(--parcel); outline-offset: -6px; }
+.info::after { content: ""; position: absolute; inset: -13px; }
+.info:hover, .info:focus-visible { background: var(--ink); color: var(--paper); }
+.info:focus-visible { outline: 2px solid var(--parcel); outline-offset: 2px; }
 .bulle {
-  max-width: min(36ch, calc(100vw - 32px)); padding: 12px 14px; border: 1px solid var(--ink);
-  background: var(--paper); color: var(--ink); font-size: 0.9rem; line-height: 1.45; text-wrap: pretty;
+  max-width: min(36ch, calc(100vw - 32px)); padding: 10px 12px; border: 1px solid var(--ink);
+  background: var(--paper); color: var(--ink); font-size: 0.875rem; line-height: 1.45; text-wrap: pretty;
+  box-shadow: 0 4px 16px oklch(0 0 0 / 0.12);
 }
-.bulle::backdrop { background: oklch(0 0 0 / 0.15); }
+@supports (position-area: bottom) {
+  .bulle { inset: auto; margin: 6px 0 0; position-area: bottom span-right; position-try-fallbacks: flip-block, flip-inline; }
+}
