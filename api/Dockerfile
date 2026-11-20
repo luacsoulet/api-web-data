@@ -8,8 +8,10 @@ ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 COPY pyproject.toml uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev --no-install-project
 
-COPY calculs.py main.py ./
+COPY calculs.py main.py modele.py ./
 COPY data/ data/
+# Modèle entraîné au build, jamais à chaque requête
+RUN /app/.venv/bin/python modele.py
 
 RUN useradd --create-home app
 USER app
