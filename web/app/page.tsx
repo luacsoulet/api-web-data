@@ -1,14 +1,32 @@
 import Link from "next/link";
-import { chargerDonnees, TYPES, type TypeBien } from "@/lib/api";
+import {
+  chargerDonnees,
+  chargerPoints,
+  TYPES,
+  type TypeBien,
+  type Kpis,
+  type Commune,
+  type Point,
+} from "@/lib/api";
+import { Carte } from "./carte";
 
 const nombre = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 });
-const fmt = (v: number | null, unite: string) => (v == null ? "n/d" : `${nombre.format(v)} ${unite}`);
+const fmt = (v: number | null, unite: string) =>
+  v == null ? "n/d" : `${nombre.format(v)} ${unite}`;
+
+function toNumber(v: string | string[] | undefined): number | null {
+  if (v === undefined || v === "") return null;
+  const n = Number(Array.isArray(v) ? v[0] : v);
+  return Number.isFinite(n) ? n : null;
+}
 
 export default async function Page({ searchParams }: PageProps<"/">) {
-  const { type: brut } = await searchParams;
-  const type: TypeBien = TYPES.find((t) => t === brut) ?? "Maison";
-  // /evolution est chargé (contrat du sprint) mais pas encore affiché
-  const [kpis, communes] = await chargerDonnees(type);
+  const type: TypeBien = TYPES.find((t) => t === searchParams.type) ?? "Maison";
+  const annee = toNumber(searchParams.annee);
+  const budget_max = toNumber(searchParams.budget_max);
+
+  const [kpis, communes] = await chargerDonnees(type, annee, budget_max);
+  const points = await chargerPoints(type, annee, budget_max);
 
   const max = Math.max(...communes.map((c) => c.prix_m2_median ?? 0), 1);
   const top = communes[0];
@@ -23,16 +41,35 @@ export default async function Page({ searchParams }: PageProps<"/">) {
 
   return (
     <main>
-      <p className="source">DGFiP, DVF géolocalisées (Etalab) · Loiret · 2021-2025 · Licence Ouverte 2.0</p>
+      <p className="source">
+        DGFiP, DVF géolocalisées (Etalab) · Loiret · 2021-2025 · Licence Ouverte 2.0
+      </p>
       <h1>Où chercher un logement autour d&apos;Orléans, et pour quel budget ?</h1>
 
-      <nav className="filtre" aria-label="Type de bien">
-        {TYPES.map((t) => (
-          <Link key={t} href={`/?type=${t}`} aria-current={t === type ? "page" : undefined}>
-            {t}
-          </Link>
-        ))}
-      </nav>
+      <form method="get" className="filtres" aria-label="Filtres">
+        <label>
+          Type de bien
+          <select name="type" defaultValue={type}>
+            {TYPES.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Année
+          <select name="annee" defaultValue={annee ?? ""}>
+            <option value="">Toutes</option>
+            {[2021, 2022, 2023, 2024, 2025].map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Budget max (€)
+          <input type="number" name="budget_max" defaultValue={budget_max ?? ""} min="0" />
+        </label>
+        <button type="submit">Appliquer</button>
+      </form>
 
       <section className="kpis" aria-label="Indicateurs">
         <div className="panel surligne">
@@ -46,9 +83,13 @@ export default async function Page({ searchParams }: PageProps<"/">) {
         <div className="panel">
           <p className="label">Nombre de ventes</p>
           <p className="valeur">{nombre.format(kpis.n_ventes)}</p>
-          <p className="detail">dans {nombre.format(kpis.n_communes)} communes</p>
+          <p className="detail">
+            dans {nombre.format(kpis.n_communes)} communes
+          </p>
         </div>
       </section>
+
+      <Carte points={points} communes={communes} />
 
       <section className="panel graphique" aria-labelledby="titre-graphique">
         <h2 id="titre-graphique">{titre}</h2>
@@ -57,10 +98,14 @@ export default async function Page({ searchParams }: PageProps<"/">) {
             <li key={c.code_commune}>
               <span className="nom">{c.nom_commune}</span>
               <span className="piste" aria-hidden="true">
-                <span className="barre" style={{ width: `${((c.prix_m2_median ?? 0) / max) * 100}%` }} />
+                <span
+                  className="barre"
+                  style={{ width: `${((c.prix_m2_median ?? 0) / max) * 100}%` }}
+                />
               </span>
               <span className="chiffre">
-                {fmt(c.prix_m2_median, "€/m²")} <small>{nombre.format(c.n)} ventes</small>
+                {fmt(c.prix_m2_median, "€/m²")}
+                <small>{nombre.format(c.n)} ventes</small>
               </span>
             </li>
           ))}
