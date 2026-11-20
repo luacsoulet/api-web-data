@@ -60,6 +60,7 @@ def test_ventes_points_et_total():
 def test_commune_et_404():
     c = client.get("/communes/45234").json()
     assert c["code_commune"] == "45234" and c["n"] > 0
+    assert "filosofi_niveau_vie_median" in c["infos"]
     assert client.get("/communes/99999").status_code == 404
 
 
@@ -194,6 +195,7 @@ def test_bien_fiche_et_404():
     assert b["piscines"]["features"][0]["geometry"]["type"] == "Polygon"
     assert all(a["niveau"] in {"info", "vigilance", "alerte"} for a in b["attention"])
     assert "adresse" not in b
+    assert "hauteur_inondation_max_m" in b
     assert "prix_m2_median_commune" in b and "ecart_pct" in b
     assert client.get("/biens/inconnu").status_code == 404
 

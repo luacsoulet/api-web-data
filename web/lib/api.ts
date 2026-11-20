@@ -19,6 +19,7 @@ export type Commune = {
   prix_m2_median: number | null;
   valeur_median: number | null;
 };
+export type CommuneDetail = Commune & { infos: Record<string, string | number | boolean | null> };
 export type Evolution = { annee: number; n: number; prix_m2_median: number | null };
 export type Point = {
   id_mutation: string;
@@ -196,7 +197,7 @@ export async function commune(code: string, q: URLSearchParams) {
   const res = await fetch(`${API_URL}/communes/${encodeURIComponent(code)}?${q}`, { next: { revalidate: 3600 } });
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`API /communes/${code} : ${res.status}`);
-  return (await res.json()) as Commune;
+  return (await res.json()) as CommuneDetail;
 }
 
 export function ventesCommune(code: string, q: URLSearchParams, section?: string, limit = 200) {

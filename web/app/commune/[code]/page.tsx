@@ -45,6 +45,31 @@ export default async function PageCommune({ params, searchParams }: PageProps<"/
   const titre = top
     ? `Section ${top.section}, la plus chère ${de}${c.nom_commune}${top.n >= 10 ? " (sections d'au moins 10 ventes)" : ""} : ${fmt(top.prix_m2_median, " €/m²")} médian sur ${nombre.format(top.n)} vente${top.n > 1 ? "s" : ""}`
     : "Aucune section avec des ventes pour cette recherche";
+  const i = c.infos ?? {};
+  const dec = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 1 });
+  // booléens en oui/non, décimales gardées (loyers), listes « a;b » lisibles
+  const v = (k: string, unite = "") => {
+    const x = i[k];
+    if (x == null || x === "") return "non renseigné";
+    if (typeof x === "boolean") return x ? "oui" : "non";
+    if (typeof x === "number") return `${dec.format(x)}${unite}`;
+    return String(x).replaceAll(";", ", ");
+  };
+  const profil: [string, string][] = [
+    ["Niveau de vie médian", v("filosofi_niveau_vie_median", " €/an")],
+    ["Taux de pauvreté", v("filosofi_taux_pauvrete_pct", " %")],
+    ["Loyer appartement", v("loyer_app_m2", " €/m²")],
+    ["Loyer maison", v("loyer_mai_m2", " €/m²")],
+    ["Équipements (BPE)", v("bpe_nb_total")],
+    ["Copropriétés", v("rnc_nb_coproprietes")],
+    ["Catastrophes naturelles", `${v("catnat_nb_total")} arrêtés dont ${v("catnat_nb_depuis_2010")} depuis 2010`],
+    ["Dernière catastrophe naturelle", i.catnat_date_dernier ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "long" }).format(new Date(String(i.catnat_date_dernier))) : "non renseigné"],
+    ["Types de catastrophes", v("catnat_types")],
+    ["Plans de prévention (PPRN)", v("pprn_existe")],
+    ["Risques recensés (DDRM)", v("ddrm_risques")],
+    ["Sites pollués (CASIAS)", v("casias_nb_sites")],
+    ["ICPE dont Seveso", `${v("icpe_nb")} dont ${v("icpe_nb_seveso")}`],
+  ];
   const dernier = sections[sections.length - 1];
 
   return (
@@ -75,6 +100,21 @@ export default async function PageCommune({ params, searchParams }: PageProps<"/
           <p className="detail">{sections.length} sections cadastrales</p>
         </div>
       </section>
+
+      {Object.keys(i).length > 0 && (
+        <section className="panel" aria-labelledby="titre-profil">
+          <h2 id="titre-profil">Profil de la commune</h2>
+          <p className="source">Insee Filosofi · Géorisques · BPE · RNC · CASIAS · ICPE</p>
+          <dl className="infos">
+            {profil.map(([l, val]) => (
+              <div key={l} style={{ display: "contents" }}>
+                <dt>{l}</dt>
+                <dd>{val}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )}
 
       <Carte ventes={points} cadrage={cadrage} qs={q.toString()} />
 

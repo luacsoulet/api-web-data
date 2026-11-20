@@ -13,11 +13,31 @@ PISCINES = Path(__file__).parent / "data" / "piscines.parquet"
 COMMUNES = Path(__file__).parent / "data" / "communes.geojson"
 ADRESSES = Path(__file__).parent / "data" / "adresses.parquet"
 EQUIPEMENTS = Path(__file__).parent / "data" / "equipements.geojson"
+COMMUNES_INFOS = Path(__file__).parent / "data" / "communes_infos.parquet"
+BIENS_COMPLEMENTS = Path(__file__).parent / "data" / "biens_complements.parquet"
 
 
 @lru_cache
 def charger() -> pd.DataFrame:
     return pd.read_parquet(DATA)
+
+
+@lru_cache
+def _infos() -> pd.DataFrame:
+    """Compléments communaux, indexés par code ; vide si le fichier manque."""
+    return pd.read_parquet(COMMUNES_INFOS).set_index("code_commune") if COMMUNES_INFOS.exists() else pd.DataFrame()
+
+
+@lru_cache
+def _complements() -> pd.DataFrame:
+    return pd.read_parquet(BIENS_COMPLEMENTS).drop_duplicates("id_mutation").set_index("id_mutation") if BIENS_COMPLEMENTS.exists() else pd.DataFrame()
+
+
+def _ligne(df: pd.DataFrame, cle: str) -> dict:
+    """Ligne d'un DataFrame indexé -> dict JSON (NaN -> null), {} si absente."""
+    if cle not in df.index:
+        return {}
+    return json.loads(df.loc[[cle]].to_json(orient="records", force_ascii=False))[0]
 
 
 @lru_cache
@@ -244,6 +264,7 @@ def commune(f: dict, code: str) -> dict | None:
         "code_commune": code,
         "nom_commune": noms.iloc[0],
         **_medianes(df[df["code_commune"] == code]),
+        "infos": _ligne(_infos(), code),
     }
 
 
@@ -448,6 +469,7 @@ def bien(id_mutation: str) -> dict | None:
     prix_m2 = r["prix_m2"]
     return {
         **r,
+        **{k: v for k, v in _ligne(_complements(), id_mutation).items() if k not in r or r[k] is None},
         "prix_m2_median_commune": med,
         "ecart_pct": None if med is None or prix_m2 is None or med == 0 else round((prix_m2 / med - 1) * 100, 1),
         "parcelles": parcelles,
