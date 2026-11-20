@@ -1,8 +1,11 @@
+# Dokploy (service « Compose ») : aucun port publié, Traefik route le domaine vers web:3000.
+# Le port 3000 de l'hôte est déjà pris par Dokploy. En local : voir docker-compose.ports.yml.
 services:
   api:
     build: ./api
     restart: unless-stopped
-    # Pas de port publié : seul le front appelle l'API, par le réseau interne de compose
+    expose:
+      - 8000
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
       interval: 30s
@@ -14,8 +17,8 @@ services:
     restart: unless-stopped
     environment:
       API_URL: http://api:8000
-    ports:
-      - "${WEB_BIND:-0.0.0.0}:${WEB_PORT:-3000}:3000"
+    expose:
+      - 3000
     depends_on:
       api:
         condition: service_healthy
