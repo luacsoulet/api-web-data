@@ -1,0 +1,118 @@
+:root {
+  --paper: oklch(0.985 0.004 240);
+  --ink: oklch(0.3 0.08 255);
+  --parcel: oklch(0.6 0.12 250);
+  --highlight: oklch(0.88 0.15 95);
+  --grid: oklch(0.86 0.04 245);
+  --muted: oklch(0.45 0.05 255);
+  --sans: var(--font-sans), system-ui, sans-serif;
+  --mono: var(--font-mono), ui-monospace, monospace;
+}
+
+/* variante sombre : cyanotype, fond bleu nuit et traits bleu pâle */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: oklch(0.22 0.05 255);
+    --ink: oklch(0.94 0.02 240);
+    --parcel: oklch(0.72 0.12 245);
+    --highlight: oklch(0.55 0.12 95);
+    --grid: oklch(0.3 0.05 255);
+    --muted: oklch(0.78 0.04 245);
+  }
+}
+
+* { box-sizing: border-box; }
+
+html { font-kerning: normal; }
+
+body {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--sans);
+  line-height: 1.5;
+  background-color: var(--paper);
+  /* grille cadastrale discrète, derrière le contenu */
+  background-image:
+    repeating-linear-gradient(to right, var(--grid) 0 1px, transparent 1px 24px),
+    repeating-linear-gradient(to bottom, var(--grid) 0 1px, transparent 1px 24px);
+}
+
+main {
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+    max(32px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+
+h1, h2 { line-height: 1.15; text-wrap: balance; margin: 0 0 1rem; }
+h1 { font-size: clamp(1.75rem, 5vw, 2.75rem); letter-spacing: -0.02em; max-width: 24ch; }
+h2 { font-size: 1.25rem; letter-spacing: -0.01em; }
+p { text-wrap: pretty; max-width: 65ch; }
+
+.source, .label, .chiffre, .valeur, .detail, .filtre a, .nom, .bouton {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+.source {
+  font-size: 0.8rem; margin: 0 0 0.75rem; color: var(--muted);
+  background: var(--paper); display: inline-block; padding: 0 4px;
+}
+.label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 0; }
+.detail { font-size: 0.8rem; margin: 0; color: var(--muted); }
+
+.panel { background: var(--paper); border: 1px solid var(--ink); padding: 16px; }
+
+h1 { background: linear-gradient(var(--paper), var(--paper)) no-repeat; width: fit-content; }
+
+.filtre { display: flex; flex-wrap: wrap; margin: 1.5rem 0; }
+.filtre a {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 44px; min-width: 44px; padding: 0 20px;
+  border: 1px solid var(--ink); margin-right: -1px;
+  background: var(--paper); color: var(--ink); text-decoration: none;
+}
+.filtre a:hover { background: var(--grid); }
+.filtre a:active { background: var(--parcel); }
+.filtre a[aria-current="page"] { background: var(--ink); color: var(--paper); }
+
+a:focus-visible, .bouton:focus-visible { outline: 3px solid var(--parcel); outline-offset: 2px; }
+
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 16px; margin-bottom: 24px; }
+.valeur { font-size: 1.75rem; font-weight: 600; margin: 4px 0; line-height: 1.15; }
+.surligne .valeur { box-shadow: inset 0 -0.45em 0 var(--highlight); display: inline-block; }
+
+.graphique { padding: 20px 16px; }
+.barres { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.barres li { display: grid; grid-template-columns: 8.5rem 1fr; gap: 4px 12px; align-items: center; }
+.nom { font-size: 0.85rem; overflow-wrap: anywhere; }
+.piste { height: 20px; background: var(--grid); }
+.barre {
+  display: block; height: 100%; background: var(--parcel);
+  transform-origin: left; animation: pousse 0.6s ease-out both;
+}
+.chiffre { grid-column: 2; font-size: 0.85rem; }
+.chiffre small { color: var(--muted); font-size: 0.75rem; margin-left: 6px; }
+.alternative { font-size: 0.9rem; color: var(--muted); margin: 16px 0 0; }
+
+@keyframes pousse { from { transform: scaleX(0); } }
+
+.bouton {
+  min-height: 44px; min-width: 44px; padding: 0 20px; cursor: pointer;
+  border: 1px solid var(--ink); background: var(--ink); color: var(--paper); font-size: 1rem;
+}
+.bouton:hover { background: var(--parcel); }
+.bouton:active { background: var(--paper); color: var(--ink); }
+
+/* squelette : hauteurs réservées, pas de décalage */
+.sq { min-height: 100px; background: var(--grid); }
+.filtre.sq { min-height: 44px; margin: 1.5rem 0; }
+.sq-grand { min-height: 560px; background: var(--grid); }
+
+@media (min-width: 40rem) {
+  .barres li { grid-template-columns: 9rem 1fr 14rem; }
+  .chiffre { grid-column: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .barre { animation: none; }
+}
