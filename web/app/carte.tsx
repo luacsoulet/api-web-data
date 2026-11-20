@@ -3,10 +3,16 @@
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { useState } from "react";
+import dynamic from "next/dynamic";
 
 import type { Point } from "@/lib/api";
 import type { Commune } from "@/lib/api";
 import { IconeTypeBien } from "./icone";
+
+const Maison3D = dynamic(() => import("./Maison3D"), { ssr: false }) as React.ComponentType<{
+  point: Point | null;
+  communes: { nom_commune: string; prix_m2_median: number | null }[];
+}>;
 
 const CENTRE: [number, number] = [47.9, 1.9];
 
@@ -84,6 +90,12 @@ export function Carte({
           <strong>Pièces :</strong>{" "}
           {selected.nombre_pieces != null ? fmtFr(selected.nombre_pieces) : "n/d"}
         </p>
+        <section className="panel agencement3d" aria-label="Agencement 3D du bien">
+          <h3 style={{ margin: "0 0 8px 0", fontSize: "1rem" }}>
+            Agencement 3D ({selected.nombre_pieces != null ? selected.nombre_pieces : 4} pièces)
+          </h3>
+          <Maison3D point={selected} communes={communes} />
+        </section>
         <p><strong>Date :</strong> {selected.date ?? "n/d"}</p>
         <p className="constat" style={{ borderLeft: `4px solid ${couleurBordure}` }}>
           {comparo}

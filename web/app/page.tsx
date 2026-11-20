@@ -1,3 +1,6 @@
+'use client';
+
+import type { Point } from "@/lib/api";
 import {
   chargerDonnees,
   chargerPoints,
@@ -8,28 +11,78 @@ import {
 } from "@/lib/api";
 import { Carte } from "./carte";
 import { IconeTypeBien } from "./icone";
+import dynamic from "next/dynamic";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+
+const Carte3D = dynamic<{ points: Point[]; type: string }>(
+  () => import("./Carte3D").then((mod) => ({ default: mod.Carte3D })),
+  { ssr: false }
+);
 
 const nombre = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 });
 const fmt = (v: number | null, unite: string) =>
   v == null ? "n/d" : `${nombre.format(v)} ${unite}`;
 
-function toNumber(v: string | string[] | undefined): number | null {
-  if (v === undefined || v === "") return null;
-  const n = Number(Array.isArray(v) ? v[0] : v);
+function toNumber(v: string | null): number | null {
+  if (v === undefined || v === null || v === "") return null;
+  const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
 
-export default async function Page({
-  searchParams,
-}: PageProps<"/">) {
-  const params = await searchParams;
-  const type: TypeBien = TYPES.find((t) => t === params.type) ?? "Maison";
-  const annee = toNumber(params.annee);
-  const budget_max = toNumber(params.budget_max);
+export default function Page() {
+  const searchParams = useSearchParams();
+  const [donnees, setDonnees] = useState<{
+    kpis: Kpis;
+    communes: Commune[];
+    points: import("@/lib/api").Point[];
+  } | null>(null);
+  const [mode3D, setMode3D] = useState(false);
+  const [chargement, setChargement] = useState(true);
 
-  const [kpis, communes] = await chargerDonnees(type, annee, budget_max);
-  const points = await chargerPoints(type, annee, budget_max);
+  useEffect(() => {
+    let ignore = false;
+    const type: TypeBien =
+      TYPES.find((t) => t === searchParams.get("type")) ?? "Maison";
+    const annee = toNumber(searchParams.get("annee"));
+    const budget_max = toNumber(searchParams.get("budget_max"));
 
+    setChargement(true);
+    Promise.all([
+      chargerDonnees(type, annee, budget_max),
+      chargerPoints(type, annee, budget_max),
+    ])
+      .then(([donneesKpis, points]) => {
+        const [kpis, communes] = donneesKpis;
+        if (!ignore) {
+          setDonnees({ kpis, communes, points });
+          setChargement(false);
+        }
+      })
+      .catch(() => {
+        if (!ignore) setChargement(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [searchParams]);
+
+  if (chargement || !donnees) {
+    return (
+      <main className="chargement">
+        <p className="source">
+          DGFiP, DVF géolocalisées (Etalab) · Loiret · 2021-2025 · Licence Ouverte 2.0
+        </p>
+        <h1>Où acheter autour d&apos;Orléans, et pour quel budget ?</h1>
+        <p style={{ textAlign: "center", padding: "4rem 0", color: "#666" }}>
+          Chargement des données…
+        </p>
+      </main>
+    );
+  }
+
+  const { kpis, communes, points } = donnees;
   const max = Math.max(...communes.map((c) => c.prix_m2_median ?? 0), 1);
   const top = communes[0];
   const dernier = communes[communes.length - 1];
@@ -51,7 +104,7 @@ export default async function Page({
       <form method="get" className="filtres" aria-label="Filtres">
         <label>
           Type de bien
-          <select name="type" defaultValue={type}>
+          <select name="type" defaultValue={typeInitial(searchParams)}>
             {TYPES.map((t) => (
               <option key={t} value={t}>
                 <IconeTypeBien type={t} /> {t}
@@ -61,7 +114,7 @@ export default async function Page({
         </label>
         <label>
           Année
-          <select name="annee" defaultValue={annee ?? ""}>
+          <select name="annee" defaultValue={searchParams.get("annee") ?? ""}>
             <option value="">Toutes</option>
             {[2021, 2022, 2023, 2024, 2025].map((y) => (
               <option key={y} value={y}>{y}</option>
@@ -70,7 +123,12 @@ export default async function Page({
         </label>
         <label>
           Budget max (€)
-          <input type="number" name="budget_max" defaultValue={budget_max ?? ""} min="0" />
+          <input
+            type="number"
+            name="budget_max"
+            defaultValue={searchParams.get("budget_max") ?? ""}
+            min="0"
+          />
         </label>
         <button type="submit" className="bouton">
           Appliquer
@@ -95,7 +153,20 @@ export default async function Page({
         </div>
       </section>
 
-      <Carte points={points} communes={communes} type={type} />
+      <div className="carte-wrapper">
+        <button
+          className="bouton bouton-3d"
+          onClick={() => setMode3D((p) => !p)}
+          aria-pressed={mode3D}
+        >
+          {mode3D ? "Repasser en 2D" : "Passer en 3D / relief"}
+        </button>
+        {mode3D ? (
+          <Carte3D points={points} type={typeInitial(searchParams)} />
+        ) : (
+          <Carte points={points} communes={communes} type={typeInitial(searchParams)} />
+        )}
+      </div>
 
       <section className="panel graphique" aria-labelledby="titre-graphique">
         <h2 id="titre-graphique">{titre}</h2>
@@ -120,4 +191,8 @@ export default async function Page({
       </section>
     </main>
   );
+}
+
+function typeInitial(searchParams: URLSearchParams): TypeBien {
+  return TYPES.find((t) => t === searchParams.get("type")) ?? "Maison";
 }
