@@ -70,3 +70,10 @@ def test_points_geo():
 def test_points_annee_filtre():
     r = client.get("/points", params={"type": "Maison", "annee": 2024, "limit": 5})
     assert r.status_code == 200
+
+
+def test_resume_sans_cle():
+    r = client.post("/resume", json={"kpis": {}, "communes": []})
+    assert r.status_code == 200
+    assert "resume" in r.json()
+    assert "Nemotron" in r.json()["resume"]

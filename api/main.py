@@ -52,3 +52,9 @@ def points(
     limit: Annotated[int, Query(ge=1, le=2000)] = 500,
 ):
     return calculs.points(f["type"], f["annee"], f["budget_max"], limit)
+
+
+@app.post("/resume")
+def resume(payload: dict):
+    """Couche intelligente Nemotron : resume l'agregat de la vue filtree."""
+    return {"resume": calculs.resumer_nemotron(payload)}

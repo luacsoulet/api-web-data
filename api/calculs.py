@@ -1,4 +1,7 @@
 from functools import lru_cache
+import json
+import os
+import urllib.request
 from pathlib import Path
 
 import pandas as pd
@@ -121,3 +124,43 @@ def points(
         }
         for r in df.itertuples()
     ]
+
+
+def resumer_nemotron(agregat: dict) -> str:
+    """Appelle Nemotron pour resumer l'agregat de la vue filtree en 3 phrases."""
+    url = os.environ.get("NEMOTRON_URL")
+    key = os.environ.get("NEMOTRON_KEY")
+    model = os.environ.get("NEMOTRON_MODEL", "nemotron")
+    if not url or not key:
+        return (
+            "Couche Nemotron non configuree : definissez NEMOTRON_URL et NEMOTRON_KEY."
+        )
+    consigne = (
+        "Resume ce tableau en 3 phrases, en francais, sans inventer de chiffre. "
+        "Ne donne que le texte du resume, sans preamble."
+    )
+    donnees = json.dumps(
+        {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": consigne},
+                {"role": "user", "content": json.dumps(agregat, ensure_ascii=False)},
+            ],
+            "temperature": 0,
+        }
+    ).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=donnees,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {key}",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+        return body["choices"][0]["message"]["content"].strip()
+    except Exception as exc:  # aucune fuite de clé dans l'erreur retournee
+        return f"Erreur Nemotron : {type(exc).__name__}"
