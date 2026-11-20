@@ -193,7 +193,42 @@ VALEURS = {
     "moyen": "moyen",
     "extreme": "crue extrême",
 }
-MARGE_MAX = 0.15  # plafond de la marge justifiée par les défauts, en part du prix
+MARGE_MAX = 0.25  # plafond de la marge justifiée par les défauts, en part du prix
+# Forfaits indicatifs de négociation par aléa (part du prix) : arguments d'acheteur, pas mesurés sur les ventes
+# passées (où les zones inondables de la Loire ne sont pas moins chères).
+# shortcut: valeurs fixées à la main, à recaler si une étude de décote locale est disponible.
+FORFAITS = {
+    "zone_inondable_scenario": {"frequent": 0.08, "moyen": 0.05, "extreme": 0.02},
+    "alea_argile": {"fort": 0.04, "moyen": 0.02},
+    "sensibilite_nappe": {"debordement_nappe": 0.03, "inondation_cave": 0.015},
+}
+
+
+def _forfait(f) -> float:
+    if f["facteur"] == "bruit_lden_max_db":
+        v = f["valeur"] or 0
+        return 0.03 if v >= 65 else 0.01 if v >= 55 else 0.0
+    return FORFAITS.get(f["facteur"], {}).get(f["valeur"], 0.0)
+
+
+def _nom(f) -> str:
+    v = f["valeur"]
+    return LIBELLES[f["facteur"]] + ("" if isinstance(v, bool) else f" {v:g} dB" if isinstance(v, float) else f" {VALEURS.get(v, v)}")  # fmt: skip
+
+
+def _arguments(facteurs, prix) -> list[dict]:
+    """Par défaut : le plus fort entre l'impact mesuré par le modèle et le forfait indicatif de l'aléa."""
+    out = []
+    for f in facteurs:
+        modele, forfait = max(-f["impact_eur"], 0.0), _forfait(f) * prix
+        montant = max(modele, forfait)
+        if montant < 1:
+            continue
+        out.append({
+            "facteur": f["facteur"], "valeur": f["valeur"], "libelle": _nom(f),
+            "source": "forfait" if forfait > modele else "modele", "montant_eur": montant, "pct": montant / prix,
+        })  # fmt: skip
+    return sorted(out, key=lambda a: -a["montant_eur"])
 
 
 def _eur(x: float) -> str:
@@ -201,36 +236,35 @@ def _eur(x: float) -> str:
 
 
 def _marge(facteurs, prix, mae, prix_demande) -> dict:
-    neg = [f for f in facteurs if f["impact_eur"] < 0]
+    args = _arguments(facteurs, prix)
     ref = prix_demande or prix
-    justifiee = min(-sum(f["impact_eur"] for f in neg), MARGE_MAX * ref)
+    justifiee = min(sum(a["montant_eur"] for a in args), MARGE_MAX * ref)
     haute = max(justifiee, prix_demande - prix) if prix_demande else justifiee
     pct = haute / ref
     pct_fr = f"{pct * 100:.1f} %".replace(".", ",")
 
-    def nom(f):
-        v = f["valeur"]
-        return LIBELLES[f["facteur"]] + ("" if isinstance(v, bool) else f" {v:g}" if isinstance(v, float) else f" {VALEURS.get(v, v)}")  # fmt: skip
-
-    if neg:
-        raisons = ", ".join(f"{nom(f)} ({_eur(f['impact_eur'])})" for f in neg)
+    if args:
+        raisons = ", ".join(
+            f"{a['libelle']} (-{_eur(a['montant_eur'])}{', forfait indicatif' if a['source'] == 'forfait' else ''})"
+            for a in args
+        )
         texte = f"Défauts à faire valoir, jusqu'à {_eur(justifiee)} : {raisons}."
     else:
         texte = "Aucun défaut connu à faire valoir."
+    if any(a["source"] == "forfait" for a in args):
+        texte += " Forfait indicatif = argument de négociation : les ventes passées ne montrent pas cette décote."
     if prix_demande and prix_demande - prix > justifiee:
         texte += (
-            f" Le prix demandé dépasse l'estimation (qui tient déjà compte de ces défauts) de "
+            f" Le prix demandé dépasse l'estimation de "
             f"{_eur(prix_demande - prix)} : marge haute {_eur(haute)} ({pct_fr})."
         )
-    nuls = [nom(f) for f in facteurs if abs(f["impact_eur"]) < 1]
-    if nuls:
-        texte += f" Sans effet mesurable sur les ventes passées (mais à vérifier) : {', '.join(nuls)}."
     texte += f" Erreur moyenne du modèle : ± {_eur(mae)}."
     return {
         "basse_eur": justifiee,
         "haute_eur": haute,
         "pct": pct,
         "explication": texte,
+        "arguments": args,
     }
 
 

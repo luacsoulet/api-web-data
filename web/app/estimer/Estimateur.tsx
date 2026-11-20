@@ -257,6 +257,16 @@ export default function Estimateur({ communes, initial }: { communes: CommuneOpt
                 <p className="valeur">
                   {euro(r.marge_negociation.basse_eur)} à {euro(r.marge_negociation.haute_eur)} ({(r.marge_negociation.pct * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} %)
                 </p>
+                {r.marge_negociation.arguments && r.marge_negociation.arguments.length > 0 && (
+                  <ul>
+                    {r.marge_negociation.arguments.map((a) => (
+                      <li key={a.facteur}>
+                        {a.libelle} : −{euro(a.montant_eur)} ({(a.pct * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} %),{" "}
+                        {a.source === "forfait" ? "forfait indicatif" : "mesuré sur les ventes"}
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 <p>{r.marge_negociation.explication}</p>
               </div>
             )}
