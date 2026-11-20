@@ -33,6 +33,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <header className="entete">
           <nav aria-label="Principale">
             <Link href="/">Carte</Link>
+            <Link href="/autour">Autour d&apos;une adresse</Link>
             <Link href="/estimer">Estimer un prix</Link>
           </nav>
           <ThemeToggle />

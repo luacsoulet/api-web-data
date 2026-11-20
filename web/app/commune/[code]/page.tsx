@@ -123,7 +123,11 @@ export default async function PageCommune({ params, searchParams }: PageProps<"/
             <tbody>
               {ventes.slice(0, TABLE).map((v) => (
                 <tr key={v.id_mutation}>
-                  <td>{date.format(new Date(v.date_mutation))}</td>
+                  <td>
+                    <Link href={`/vente/${encodeURIComponent(v.id_mutation)}`} aria-label={`Fiche de la vente du ${date.format(new Date(v.date_mutation))}`}>
+                      {date.format(new Date(v.date_mutation))}
+                    </Link>
+                  </td>
                   <td>{fmt(v.valeur_fonciere, " €")}</td>
                   <td>{fmt(v.surface_reelle_bati, " m²")}</td>
                   <td>{fmt(v.nombre_pieces_principales)}</td>
@@ -132,6 +136,8 @@ export default async function PageCommune({ params, searchParams }: PageProps<"/
                   <td>
                     {v.avec_jardin && <span className="puce">jardin</span>}
                     {v.avec_dependance && <span className="puce">dépendance</span>}
+                    {v.piscine && <span className="puce">piscine</span>}
+                    {v.dpe_classe && <span className="puce">DPE {v.dpe_classe}</span>}
                   </td>
                 </tr>
               ))}
