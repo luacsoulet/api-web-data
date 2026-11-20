@@ -308,7 +308,9 @@ a.bouton { display: inline-flex; align-items: center; text-decoration: none; }
 
 /* ---- autour d'une adresse ---- */
 .recherche { display: grid; gap: 12px 16px; margin: 1.5rem 0 0; }
-@media (min-width: 40rem) { .recherche { grid-template-columns: 1fr 13rem auto; align-items: end; } }
+/* adresse sur toute la largeur, rayon et bouton dessous */
+@media (min-width: 40rem) { .recherche { grid-template-columns: 13rem auto 1fr; align-items: end; } }
+.recherche > div.champ:first-of-type { grid-column: 1 / -1; }
 .recherche .champ { position: relative; display: grid; gap: 4px; min-width: 0; }
 .recherche label { font-size: 0.85rem; font-weight: 600; }
 .recherche input:not([type="hidden"]) {
