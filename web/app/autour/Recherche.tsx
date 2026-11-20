@@ -91,7 +91,7 @@ export default function Recherche({ initial, rayon, filtres }: { initial: Choix 
       <input type="hidden" name="lat" value={choix?.lat ?? ""} />
       <input type="hidden" name="adresse" value={choix?.libelle ?? ""} />
       <div className="champ">
-        <label htmlFor={`${id}-rayon`}>Rayon (m, de 100 à 5 000)</label>
+        <label htmlFor={`${id}-rayon`}>Rayon (m)</label>
         <input id={`${id}-rayon`} name="rayon" type="number" inputMode="numeric" min={100} max={5000} step={100} defaultValue={rayon} required />
       </div>
       <div className="actions">
