@@ -4,7 +4,7 @@ import { ANNEES, TYPES } from "@/lib/api";
 const nombre = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 });
 
 /** Formulaire GET : l'URL porte l'état, fonctionne sans JavaScript. `q` = filtres déjà validés. */
-export default function Filtres({ q, action }: { q: URLSearchParams; action: string }) {
+export default function Filtres({ q, action, section }: { q: URLSearchParams; action: string; section?: string }) {
   const amin = q.get("annee_min") ?? "2021";
   const amax = q.get("annee_max") ?? "2025";
   const actifs = [
@@ -18,6 +18,8 @@ export default function Filtres({ q, action }: { q: URLSearchParams; action: str
 
   return (
     <form className="filtres panel" action={action} method="get">
+      {/* garde la section du drill-down quand on change un filtre */}
+      {section && <input type="hidden" name="section" value={section} />}
       <label>
         <span className="label">Type</span>
         <select name="type" defaultValue={q.get("type")!}>
@@ -46,6 +48,7 @@ export default function Filtres({ q, action }: { q: URLSearchParams; action: str
         <input name="surface_min" type="number" inputMode="numeric" min={9} max={400}
           placeholder="ex. 80" defaultValue={q.get("surface_min") ?? ""} />
       </label>
+      <div className="options">
       <label className="case">
         <input type="checkbox" name="jardin" value="true" defaultChecked={q.has("jardin")} /> Jardin
       </label>
@@ -55,6 +58,7 @@ export default function Filtres({ q, action }: { q: URLSearchParams; action: str
       <div className="actions">
         <button className="bouton" type="submit">Appliquer</button>
         <Link className="lien-bouton" href={action}>Réinitialiser</Link>
+      </div>
       </div>
       <p className="detail actifs" aria-live="polite">Recherche : {actifs.join(" · ")}</p>
     </form>

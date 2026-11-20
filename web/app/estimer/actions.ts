@@ -21,7 +21,7 @@ export async function estimer(_: Etat, f: FormData): Promise<Etat> {
   const pieces = Number(f.get("pieces"));
   const type = f.get("type") === "Appartement" ? "Appartement" : "Maison";
   if (!code) return { erreur: "Choisissez une commune dans la liste." };
-  if (!(surface >= 9 && surface <= 1000)) return { erreur: "La surface doit être comprise entre 9 et 1 000 m²." };
+  if (!(surface >= 9 && surface <= 400)) return { erreur: "La surface doit être comprise entre 9 et 400 m² (bornes des données DVF retenues)." };
   if (!(pieces >= 1 && pieces <= 8)) return { erreur: "Le nombre de pièces doit être compris entre 1 et 8." };
 
   const q = new URLSearchParams({
